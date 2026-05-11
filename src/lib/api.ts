@@ -71,18 +71,55 @@ export type CreateProductPayload = {
   available_stock: number;
   min_stock_level?: number;
   portal_type?: string;
-quantity_value?: number;
-quantity_unit?: string;
+  quantity_value?: number;
+  quantity_unit?: string;
   images?: {
-  image_url: string;
-  storage_bucket?: string;
-  storage_path?: string;
-  file_name?: string;
-  mime_type?: string;
-  file_size?: number;
-  alt_text?: string;
-}[];
+    image_url: string;
+    storage_bucket?: string;
+    storage_path?: string;
+    file_name?: string;
+    mime_type?: string;
+    file_size?: number;
+    alt_text?: string;
+  }[];
 };
+export type InventoryItem = {
+  id: string;
+  product_id: string;
+
+  product_name: string;
+  sku?: string;
+
+  portal_type?: string;
+  quantity_value?: number;
+  quantity_unit?: string;
+
+  location_id: string;
+  location_name?: string;
+
+  available_stock: number;
+  reserved_stock: number;
+  min_stock_level: number;
+
+  is_out_of_stock: boolean;
+  is_active: boolean;
+
+  updated_at: string;
+};
+
+export type ServiceLocation = {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  pincode: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  radius_km?: number | null;
+  is_active: boolean;
+  created_at: string;
+};
+
 
 export function getToken() {
   return localStorage.getItem('admin_token');
@@ -186,29 +223,103 @@ export const api = {
       method: 'DELETE',
     }),
 
-    uploadProductImage: async (file: File) => {
-  const token = localStorage.getItem("admin_token");
+  uploadProductImage: async (file: File) => {
+    const token = localStorage.getItem("admin_token");
 
-  const formData = new FormData();
-  formData.append("image", file);
+    const formData = new FormData();
+    formData.append("image", file);
 
-  const response = await fetch(`${API_BASE_URL}/admin/products/upload-image`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
+    const response = await fetch(`${API_BASE_URL}/admin/products/upload-image`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(data.message || "Failed to upload image");
-  }
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to upload image");
+    }
 
-  return data as {
-    success: boolean;
-    image_url: string;
-  };
-},
+    return data as {
+      success: boolean;
+      image_url: string;
+    };
+  },
+
+  getInventory: () => request("/admin/inventory"),
+
+  createInventory: (payload: {
+    product_id: string;
+    location_id: string;
+    available_stock: number;
+    reserved_stock?: number;
+    min_stock_level?: number;
+    remarks?: string;
+  }) =>
+    request("/admin/inventory", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateInventory: (
+    id: string,
+    payload: {
+      available_stock?: number;
+      reserved_stock?: number;
+      min_stock_level?: number;
+      remarks?: string;
+    }
+  ) =>
+    request(`/admin/inventory/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteInventory: (id: string) =>
+    request(`/admin/inventory/${id}`, {
+      method: "DELETE",
+    }),
+
+  getLocations: () => request("/admin/locations"),
+
+  createLocation: (payload: {
+    name: string;
+    city: string;
+    state: string;
+    pincode: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    radius_km?: number | null;
+    is_active?: boolean;
+  }) =>
+    request("/admin/locations", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateLocation: (
+    id: string,
+    payload: Partial<{
+      name: string;
+      city: string;
+      state: string;
+      pincode: string;
+      latitude: number | null;
+      longitude: number | null;
+      radius_km: number | null;
+      is_active: boolean;
+    }>
+  ) =>
+    request(`/admin/locations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteLocation: (id: string) =>
+    request(`/admin/locations/${id}`, {
+      method: "DELETE",
+    }),
 };

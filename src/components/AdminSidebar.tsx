@@ -26,15 +26,15 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  // { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Products (CMS)", url: "/products", icon: Package },
   { title: "Inventory", url: "/inventory", icon: Boxes },
-  { title: "Pricing", url: "/pricing", icon: Tags },
-  { title: "Orders", url: "/orders", icon: ShoppingCart },
-  { title: "Customers", url: "/customers", icon: Users },
-  { title: "Users & Roles", url: "/users", icon: UserCog },
+  // { title: "Pricing", url: "/pricing", icon: Tags },
+  // { title: "Orders", url: "/orders", icon: ShoppingCart },
+  // { title: "Customers", url: "/customers", icon: Users },
+  // { title: "Users & Roles", url: "/users", icon: UserCog },
   { title: "Locations", url: "/locations", icon: MapPin },
-  { title: "Audit Logs", url: "/audit", icon: ScrollText },
+  // { title: "Audit Logs", url: "/audit", icon: ScrollText },
 ];
 
 export function AdminSidebar() {
@@ -54,7 +54,7 @@ export function AdminSidebar() {
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-sidebar-foreground">
-                Nimbus Admin
+                HydraMight Admin
               </span>
               <span className="text-xs text-sidebar-foreground/60">
                 Control center

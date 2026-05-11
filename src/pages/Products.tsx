@@ -20,7 +20,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { AdminProduct, api, Category, CreateProductPayload } from "@/lib/api";
+import { AdminProduct, api, Category, CreateProductPayload, ServiceLocation } from "@/lib/api";
 
 const DEFAULT_LOCATION_ID = import.meta.env.VITE_DEFAULT_LOCATION_ID || "";
 
@@ -51,7 +51,7 @@ const blankProductForm = {
   mime_type: "",
   file_size: "",
 
-  location_id: DEFAULT_LOCATION_ID,
+  location_ids: DEFAULT_LOCATION_ID ? [DEFAULT_LOCATION_ID] : [],
   is_featured: false,
 };
 
@@ -65,17 +65,20 @@ export default function Products() {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [categoryName, setCategoryName] = useState("");
   const [form, setForm] = useState(blankProductForm);
+  const [locations, setLocations] = useState<ServiceLocation[]>([]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [productResponse, categoryResponse] = await Promise.all([
+      const [productResponse, categoryResponse, locationResponse] = await Promise.all([
         api.getProducts(100, 0),
         api.getCategories(),
+        api.getLocations(),
       ]);
 
       setProducts(productResponse.data || []);
       setCategories(categoryResponse.data || []);
+      setLocations(locationResponse.data || []);
     } catch (error) {
       toast({
         title: "Failed to load catalog",
@@ -165,7 +168,7 @@ export default function Products() {
       if (
         !form.name ||
         !form.category_id ||
-        !form.location_id ||
+        form.location_ids.length === 0 ||
         !form.mrp ||
         !form.selling_price ||
         !form.portal_type ||
@@ -216,7 +219,7 @@ export default function Products() {
         weight: form.weight ? Number(form.weight) : null,
         is_featured: Boolean(form.is_featured),
 
-        location_id: form.location_id,
+        location_ids: form.location_ids,
         mrp: Number(form.mrp),
         selling_price: Number(form.selling_price),
         available_stock: Number(form.available_stock || 0),
@@ -224,16 +227,16 @@ export default function Products() {
 
         images: form.image_url
           ? [
-              {
-                image_url: form.image_url,
-                storage_bucket: form.storage_bucket || "product-images",
-                storage_path: form.storage_path || undefined,
-                file_name: form.file_name || undefined,
-                mime_type: form.mime_type || undefined,
-                file_size: form.file_size ? Number(form.file_size) : undefined,
-                alt_text: form.name,
-              },
-            ]
+            {
+              image_url: form.image_url,
+              storage_bucket: form.storage_bucket || "product-images",
+              storage_path: form.storage_path || undefined,
+              file_name: form.file_name || undefined,
+              mime_type: form.mime_type || undefined,
+              file_size: form.file_size ? Number(form.file_size) : undefined,
+              alt_text: form.name,
+            },
+          ]
           : [],
       };
 
@@ -312,6 +315,7 @@ export default function Products() {
             <ProductDialog
               form={form}
               categories={categories}
+              locations={locations}
               saving={saving}
               uploadingImage={uploadingImage}
               onChange={setField}
@@ -486,6 +490,7 @@ export default function Products() {
 type ProductDialogProps = {
   form: typeof blankProductForm;
   categories: Category[];
+  locations: ServiceLocation[];
   saving: boolean;
   uploadingImage: boolean;
   onChange: (key: keyof typeof blankProductForm, value: string | boolean) => void;
@@ -496,6 +501,7 @@ type ProductDialogProps = {
 function ProductDialog({
   form,
   categories,
+  locations,
   saving,
   uploadingImage,
   onChange,
@@ -621,15 +627,52 @@ function ProductDialog({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label>Location ID *</Label>
-          <Input
-            value={form.location_id}
-            onChange={(e) => onChange("location_id", e.target.value)}
-            placeholder="service_locations.id"
-          />
-        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label>Locations *</Label>
 
+          <div className="rounded-md border p-3 space-y-2">
+            {locations
+              .filter((location) => location.is_active)
+              .map((location) => {
+                const checked = form.location_ids.includes(location.id);
+
+                return (
+                  <label
+                    key={location.id}
+                    className="flex cursor-pointer items-center justify-between rounded-md p-2 hover:bg-muted"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {location.name} - {location.city}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {location.pincode}
+                      </p>
+                    </div>
+
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...form.location_ids, location.id]
+                          : form.location_ids.filter((id) => id !== location.id);
+
+                        onChange("location_ids", next);
+                      }}
+                      className="h-4 w-4"
+                    />
+                  </label>
+                );
+              })}
+          </div>
+
+          {form.location_ids.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {form.location_ids.length} location(s) selected
+            </p>
+          )}
+        </div>
         <div className="space-y-2">
           <Label>Unit</Label>
           <Input
