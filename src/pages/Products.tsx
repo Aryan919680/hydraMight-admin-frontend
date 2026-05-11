@@ -1,112 +1,213 @@
-import { useState } from "react";
-import {
-  Plus,
-  Pencil,
-  Image as ImageIcon,
-  Upload,
-  Search,
-  Folder,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Folder, Image as ImageIcon, Loader2, Pencil, Plus, Search, Upload } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/hooks/use-toast";
+import { AdminProduct, api, Category, CreateProductPayload } from "@/lib/api";
 
-const initialProducts = [
-  {
-    id: "P-001",
-    name: "Organic Basmati Rice 5kg",
-    category: "Groceries",
-    price: "₹ 720",
-    active: true,
-  },
-  {
-    id: "P-002",
-    name: "Cold Pressed Mustard Oil 1L",
-    category: "Groceries",
-    price: "₹ 280",
-    active: true,
-  },
-  {
-    id: "P-003",
-    name: "Himalayan Pink Salt 500g",
-    category: "Pantry",
-    price: "₹ 120",
-    active: false,
-  },
-  {
-    id: "P-004",
-    name: "Almonds Premium 250g",
-    category: "Dry Fruits",
-    price: "₹ 340",
-    active: true,
-  },
-  {
-    id: "P-005",
-    name: "Whole Wheat Atta 10kg",
-    category: "Groceries",
-    price: "₹ 460",
-    active: true,
-  },
-  {
-    id: "P-006",
-    name: "Filter Coffee Powder 500g",
-    category: "Beverages",
-    price: "₹ 380",
-    active: true,
-  },
-];
+const DEFAULT_LOCATION_ID = import.meta.env.VITE_DEFAULT_LOCATION_ID || "";
 
-const categories = ["Groceries", "Pantry", "Dry Fruits", "Beverages", "Snacks"];
+const blankProductForm = {
+  name: "",
+  sku: "",
+  brand: "",
+  category_id: "",
+  short_description: "",
+  description: "",
+  unit: "piece",
+  weight: "",
+  mrp: "",
+  selling_price: "",
+  available_stock: "",
+  min_stock_level: "0",
+  image_url: "",
+  location_id: DEFAULT_LOCATION_ID,
+  is_featured: false,
+};
 
 export default function Products() {
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [categoryName, setCategoryName] = useState("");
+  const [form, setForm] = useState(blankProductForm);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
-  const toggleActive = (id: string) =>
-    setProducts((p) =>
-      p.map((x) => (x.id === id ? { ...x, active: !x.active } : x)),
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [productResponse, categoryResponse] = await Promise.all([
+        api.getProducts(100, 0),
+        api.getCategories(),
+      ]);
+      setProducts(productResponse.data || []);
+      setCategories(categoryResponse.data || []);
+    } catch (error) {
+      toast({
+        title: "Failed to load catalog",
+        description: error instanceof Error ? error.message : "Please check backend connection.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return products;
+    return products.filter((p) =>
+      [p.name, p.sku, p.category_name, p.brand].some((value) => String(value || "").toLowerCase().includes(q)),
     );
+  }, [products, search]);
+
+  const setField = (key: keyof typeof blankProductForm, value: string | boolean) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const createProduct = async () => {
+    try {
+      if (!form.name || !form.category_id || !form.location_id || !form.mrp || !form.selling_price) {
+        toast({
+          title: "Missing required fields",
+          description: "Name, category, location, MRP and selling price are required.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSaving(true);
+
+      const payload: CreateProductPayload = {
+        category_id: form.category_id,
+        name: form.name,
+        sku: form.sku || undefined,
+        short_description: form.short_description || undefined,
+        description: form.description || undefined,
+        brand: form.brand || undefined,
+        unit: form.unit || undefined,
+        weight: form.weight ? Number(form.weight) : null,
+        is_featured: Boolean(form.is_featured),
+        location_id: form.location_id,
+        mrp: Number(form.mrp),
+        selling_price: Number(form.selling_price),
+        available_stock: Number(form.available_stock || 0),
+        min_stock_level: Number(form.min_stock_level || 0),
+        images: form.image_url ? [{ image_url: form.image_url, alt_text: form.name }] : [],
+      };
+
+      await api.createProduct(payload);
+      toast({ title: "Product created", description: "Product is now available as per stock and active status." });
+      setForm(blankProductForm);
+      setProductDialogOpen(false);
+      await loadData();
+    } catch (error) {
+      toast({
+        title: "Failed to create product",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (product: AdminProduct) => {
+    try {
+      const nextValue = !product.is_active;
+      await api.updateProduct(product.id, { is_active: nextValue });
+      setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, is_active: nextValue } : p)));
+      toast({ title: nextValue ? "Product activated" : "Product deactivated" });
+    } catch (error) {
+      toast({
+        title: "Status update failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const createCategory = async () => {
+    try {
+      if (!categoryName.trim()) return;
+      await api.createCategory({ name: categoryName.trim() });
+      setCategoryName("");
+      toast({ title: "Category added" });
+      const response = await api.getCategories();
+      setCategories(response.data || []);
+    } catch (error) {
+      toast({
+        title: "Category creation failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const uploadProductImage = async (file: File) => {
+  try {
+    setUploadingImage(true);
+
+    const response = await api.uploadProductImage(file);
+
+    if (!response.success || !response.image_url) {
+      throw new Error("Image upload failed");
+    }
+
+    setField("image_url", response.image_url);
+
+    toast({
+      title: "Image uploaded",
+      description: "Product image uploaded successfully.",
+    });
+  } catch (error) {
+    toast({
+      title: "Image upload failed",
+      description: error instanceof Error ? error.message : "Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setUploadingImage(false);
+  }
+};
 
   return (
     <div>
       <PageHeader
         title="Product CMS"
-        description="Create, manage and publish products like a content management system."
+        description="Create products in admin CMS and publish them to the customer e-commerce storefront."
         actions={
-          <Dialog>
+          <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-1 h-4 w-4" /> New Product
               </Button>
             </DialogTrigger>
-            <ProductDialog />
+           <ProductDialog
+  form={form}
+  categories={categories}
+  saving={saving}
+  uploadingImage={uploadingImage}
+  onChange={setField}
+  onSubmit={createProduct}
+  onImageUpload={uploadProductImage}
+/>
           </Dialog>
         }
       />
@@ -124,60 +225,64 @@ export default function Products() {
               <div>
                 <CardTitle>Product Catalog</CardTitle>
                 <CardDescription>
-                  Manage all products, drafts and published listings.
+                  Data comes from your Express backend and Supabase database.
                 </CardDescription>
               </div>
               <div className="relative w-64">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Search products" className="pl-9" />
+                <Input placeholder="Search products" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {products.map((p) => (
-                  <Card key={p.id} className="overflow-hidden border">
-                    <div className="flex h-32 items-center justify-center bg-gradient-to-br from-accent to-secondary">
-                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                    <CardContent className="space-y-3 p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-medium leading-tight">
-                            {p.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {p.id} · {p.category}
-                          </p>
-                        </div>
-                        <Badge
-                          variant={p.active ? "default" : "secondary"}
-                          className={
-                            p.active
-                              ? "bg-success/10 text-success hover:bg-success/10"
-                              : ""
-                          }
-                        >
-                          {p.active ? "Active" : "Inactive"}
-                        </Badge>
+              {loading ? (
+                <div className="flex items-center justify-center rounded-lg border py-16 text-muted-foreground">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading products...
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                  No products found. Add your first product from CMS.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {filteredProducts.map((p) => (
+                    <Card key={`${p.id}-${p.location_id || "default"}`} className="overflow-hidden border">
+                      <div className="flex h-32 items-center justify-center bg-gradient-to-br from-accent to-secondary">
+                        {p.primary_image ? (
+                          <img src={p.primary_image} alt={p.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                        )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-base font-semibold">
-                          {p.price}
-                        </span>
-                        <div className="flex items-center gap-3">
-                          <Switch
-                            checked={p.active}
-                            onCheckedChange={() => toggleActive(p.id)}
-                          />
-                          <Button variant="ghost" size="icon">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                      <CardContent className="space-y-3 p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium leading-tight">{p.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {p.sku || "No SKU"} · {p.category_name || "No category"}
+                            </p>
+                          </div>
+                          <Badge variant={p.is_active ? "default" : "secondary"} className={p.is_active ? "bg-success/10 text-success hover:bg-success/10" : ""}>
+                            {p.is_active ? "Active" : "Inactive"}
+                          </Badge>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div>MRP: ₹{Number(p.mrp || 0).toFixed(2)}</div>
+                          <div>Stock: {p.available_stock ?? 0}</div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-base font-semibold">₹{Number(p.selling_price || 0).toFixed(2)}</span>
+                          <div className="flex items-center gap-3">
+                            <Switch checked={Boolean(p.is_active)} onCheckedChange={() => toggleActive(p)} />
+                            <Button variant="ghost" size="icon" disabled title="Edit form can be added next">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -186,28 +291,23 @@ export default function Products() {
           <Card>
             <CardHeader>
               <CardTitle>Categories</CardTitle>
-              <CardDescription>Organize your catalog.</CardDescription>
+              <CardDescription>Categories are saved in Supabase through backend API.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Input placeholder="New category name" />
-                <Button>
+                <Input placeholder="New category name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} />
+                <Button onClick={createCategory}>
                   <Plus className="mr-1 h-4 w-4" /> Add
                 </Button>
               </div>
               <div className="grid gap-3 md:grid-cols-3">
                 {categories.map((c) => (
-                  <div
-                    key={c}
-                    className="flex items-center justify-between rounded-lg border bg-card p-3"
-                  >
+                  <div key={c.id} className="flex items-center justify-between rounded-lg border bg-card p-3">
                     <div className="flex items-center gap-2">
                       <Folder className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">{c}</span>
+                      <span className="text-sm font-medium">{c.name}</span>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      Edit
-                    </Button>
+                    <Badge variant={c.is_active ? "default" : "secondary"}>{c.is_active ? "Active" : "Inactive"}</Badge>
                   </div>
                 ))}
               </div>
@@ -220,24 +320,15 @@ export default function Products() {
             <CardHeader>
               <CardTitle>Media Library</CardTitle>
               <CardDescription>
-                Upload and reuse images across products.
+                For now, paste image URLs in product form. Supabase Storage upload can be added next.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-4 lg:grid-cols-6">
-                <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-muted/40 text-muted-foreground hover:bg-muted">
+                <label className="flex aspect-square cursor-not-allowed flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-muted/40 text-muted-foreground">
                   <Upload className="h-6 w-6" />
-                  <span className="text-xs">Upload</span>
-                  <input type="file" className="hidden" multiple />
+                  <span className="text-xs text-center">Storage upload pending</span>
                 </label>
-                {Array.from({ length: 11 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex aspect-square items-center justify-center rounded-lg bg-gradient-to-br from-accent to-secondary"
-                  >
-                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
@@ -247,59 +338,142 @@ export default function Products() {
   );
 }
 
-function ProductDialog() {
+type ProductDialogProps = {
+  form: typeof blankProductForm;
+  categories: Category[];
+  saving: boolean;
+  uploadingImage: boolean;
+  onChange: (key: keyof typeof blankProductForm, value: string | boolean) => void;
+  onSubmit: () => void;
+  onImageUpload: (file: File) => void;
+};
+
+function ProductDialog({
+  form,
+  categories,
+  saving,
+  uploadingImage,
+  onChange,
+  onSubmit,
+  onImageUpload,
+}: ProductDialogProps) {
   return (
-    <DialogContent className="max-w-2xl">
+    <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
       <DialogHeader>
         <DialogTitle>New Product</DialogTitle>
         <DialogDescription>
-          Create a product entry. Save as draft or publish immediately.
+          This creates product, image, price and inventory records in one backend transaction.
         </DialogDescription>
       </DialogHeader>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <Label>Product name</Label>
-          <Input placeholder="e.g. Organic Basmati Rice 5kg" />
+          <Label>Product name *</Label>
+          <Input value={form.name} onChange={(e) => onChange("name", e.target.value)} placeholder="e.g. Organic Basmati Rice 5kg" />
+        </div>
+        <div className="space-y-2">
+          <Label>SKU</Label>
+          <Input value={form.sku} onChange={(e) => onChange("sku", e.target.value)} placeholder="RICE-001" />
+        </div>
+        <div className="space-y-2">
+          <Label>Brand</Label>
+          <Input value={form.brand} onChange={(e) => onChange("brand", e.target.value)} placeholder="India Gate" />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label>Short description</Label>
+          <Input value={form.short_description} onChange={(e) => onChange("short_description", e.target.value)} placeholder="Shown on listing card" />
         </div>
         <div className="space-y-2 md:col-span-2">
           <Label>Description</Label>
-          <Textarea placeholder="Rich product description" rows={3} />
+          <Textarea value={form.description} onChange={(e) => onChange("description", e.target.value)} placeholder="Full product description" rows={3} />
         </div>
         <div className="space-y-2">
-          <Label>Category</Label>
-          <Select>
+          <Label>Category *</Label>
+          <Select value={form.category_id} onValueChange={(value) => onChange("category_id", value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
               {categories.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Price (₹)</Label>
-          <Input type="number" placeholder="0.00" />
+          <Label>Location ID *</Label>
+          <Input value={form.location_id} onChange={(e) => onChange("location_id", e.target.value)} placeholder="service_locations.id" />
         </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Images</Label>
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-8 text-muted-foreground hover:bg-muted/50">
-            <Upload className="h-6 w-6" />
-            <span className="text-sm">Drag & drop or click to upload</span>
-            <input type="file" className="hidden" multiple />
-          </label>
+        <div className="space-y-2">
+          <Label>MRP ₹ *</Label>
+          <Input type="number" value={form.mrp} onChange={(e) => onChange("mrp", e.target.value)} placeholder="150" />
         </div>
+        <div className="space-y-2">
+          <Label>Selling price ₹ *</Label>
+          <Input type="number" value={form.selling_price} onChange={(e) => onChange("selling_price", e.target.value)} placeholder="120" />
+        </div>
+        <div className="space-y-2">
+          <Label>Available stock</Label>
+          <Input type="number" value={form.available_stock} onChange={(e) => onChange("available_stock", e.target.value)} placeholder="50" />
+        </div>
+        <div className="space-y-2">
+          <Label>Minimum stock</Label>
+          <Input type="number" value={form.min_stock_level} onChange={(e) => onChange("min_stock_level", e.target.value)} placeholder="5" />
+        </div>
+        <div className="space-y-2">
+          <Label>Unit</Label>
+          <Input value={form.unit} onChange={(e) => onChange("unit", e.target.value)} placeholder="piece, kg, litre" />
+        </div>
+        <div className="space-y-2">
+          <Label>Weight</Label>
+          <Input type="number" value={form.weight} onChange={(e) => onChange("weight", e.target.value)} placeholder="1" />
+        </div>
+    <div className="space-y-2 md:col-span-2">
+  <Label>Product Image</Label>
+
+  <div className="flex items-center gap-3">
+    <Input
+      type="file"
+      accept="image/png,image/jpeg,image/jpg,image/webp"
+      disabled={uploadingImage}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          onImageUpload(file);
+        }
+      }}
+    />
+
+    {uploadingImage && (
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+    )}
+  </div>
+
+  {form.image_url && (
+    <div className="mt-3 flex items-center gap-3 rounded-lg border p-3">
+      <img
+        src={form.image_url}
+        alt={form.name || "Product image"}
+        className="h-20 w-20 rounded-md object-cover"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">Image uploaded</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {form.image_url}
+        </p>
+      </div>
+    </div>
+  )}
+</div>
         <div className="flex items-center gap-3 md:col-span-2">
-          <Switch id="active" defaultChecked />
-          <Label htmlFor="active">Active on storefront</Label>
+          <Switch id="featured" checked={form.is_featured} onCheckedChange={(checked) => onChange("is_featured", checked)} />
+          <Label htmlFor="featured">Featured product</Label>
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline">Save as draft</Button>
-        <Button>Publish</Button>
+        <Button onClick={onSubmit} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Publish Product
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

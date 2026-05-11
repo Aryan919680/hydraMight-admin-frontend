@@ -15,6 +15,7 @@ import Customers from "./pages/Customers";
 import UsersAndRoles from "./pages/UsersAndRoles";
 import Locations from "./pages/Locations";
 import AuditLogs from "./pages/AuditLogs";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -26,8 +27,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route element={<AdminLayout />}>
-            <Route path="/" element={<Dashboard />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/" element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/pricing" element={<Pricing />} />
@@ -35,7 +37,8 @@ const App = () => (
             <Route path="/customers" element={<Customers />} />
             <Route path="/users" element={<UsersAndRoles />} />
             <Route path="/locations" element={<Locations />} />
-            <Route path="/audit" element={<AuditLogs />} />
+              <Route path="/audit" element={<AuditLogs />} />
+            </Route>
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -7,25 +7,41 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { api, saveSession } from "@/lib/api";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@hydramight.com");
+  const [password, setPassword] = useState("Admin@123");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast({ title: "Missing credentials", description: "Enter email and password to continue." });
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      setLoading(true);
+      const response = await api.login(email.trim(), password);
+
+      if (!response.token || !response.user) {
+        throw new Error(response.message || "Login failed");
+      }
+
+      saveSession(response.token, response.user);
       toast({ title: "Welcome back", description: "Signed in successfully." });
-      navigate("/");
-    }, 600);
+      navigate("/", { replace: true });
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "Invalid login credentials.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,9 +94,7 @@ export default function Login() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <button type="button" className="text-xs text-primary hover:underline">
-                    Forgot password?
-                  </button>
+                  <span className="text-xs text-muted-foreground">Admin access only</span>
                 </div>
                 <div className="relative">
                   <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -97,14 +111,14 @@ export default function Login() {
               <div className="flex items-center gap-2">
                 <Checkbox id="remember" />
                 <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground">
-                  Keep me signed in for 30 days
+                  Keep me signed in
                 </Label>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                Protected area. Access is monitored and logged.
+                Backend: {import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}
               </p>
             </form>
           </CardContent>
