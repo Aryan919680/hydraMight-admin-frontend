@@ -70,7 +70,18 @@ export type CreateProductPayload = {
   selling_price: number;
   available_stock: number;
   min_stock_level?: number;
-  images?: Array<{ image_url: string; alt_text?: string; is_primary?: boolean; display_order?: number }>;
+  portal_type?: string;
+quantity_value?: number;
+quantity_unit?: string;
+  images?: {
+  image_url: string;
+  storage_bucket?: string;
+  storage_path?: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
+  alt_text?: string;
+}[];
 };
 
 export function getToken() {
