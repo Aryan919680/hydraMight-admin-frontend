@@ -31,25 +31,38 @@ export type AdminProduct = {
   id: string;
   name: string;
   slug: string;
-  sku?: string | null;
-  short_description?: string | null;
-  description?: string | null;
-  brand?: string | null;
-  unit?: string | null;
-  weight?: number | null;
+  sku?: string;
+  short_description?: string;
+  description?: string;
+  brand?: string;
+  unit?: string;
+  weight?: number;
+
+  quantity_value?: number;
+  quantity_unit?: string;
+  portal_type?: string;
+
   is_active: boolean;
   is_featured: boolean;
-  category_id?: string | null;
-  category_name?: string | null;
-  mrp?: number | string | null;
-  selling_price?: number | string | null;
-  currency?: string | null;
-  available_stock?: number | null;
-  reserved_stock?: number | null;
-  min_stock_level?: number | null;
-  is_out_of_stock?: boolean | null;
-  location_id?: string | null;
-  primary_image?: string | null;
+
+  category_id?: string;
+  category_name?: string;
+
+  location_count?: number;
+
+  total_stock?: number;
+  total_available_stock?: number;
+  total_reserved_stock?: number;
+  available_stock?: number;
+
+  is_out_of_stock?: boolean;
+
+  mrp?: number;
+  selling_price?: number;
+  currency?: string;
+
+  primary_image?: string;
+
   created_at?: string;
   updated_at?: string;
 };
@@ -57,22 +70,28 @@ export type AdminProduct = {
 export type CreateProductPayload = {
   category_id: string;
   name: string;
-  slug?: string;
   sku?: string;
   short_description?: string;
   description?: string;
   brand?: string;
-  unit?: string;
-  weight?: number | null;
-  is_featured?: boolean;
-  location_id: string;
-  mrp: number;
-  selling_price: number;
-  available_stock: number;
-  min_stock_level?: number;
+
   portal_type?: string;
   quantity_value?: number;
   quantity_unit?: string;
+
+  unit?: string;
+  weight?: number | null;
+  is_featured?: boolean;
+
+  location_inventory: {
+    location_id: string;
+    mrp: number;
+    selling_price: number;
+    available_stock: number;
+    reserved_stock?: number;
+    min_stock_level?: number;
+  }[];
+
   images?: {
     image_url: string;
     storage_bucket?: string;
@@ -83,10 +102,29 @@ export type CreateProductPayload = {
     alt_text?: string;
   }[];
 };
+
+
+
+
+export type MainInventoryItem = {
+  id: string;
+  product_id: string;
+  product_name: string;
+  sku?: string;
+  portal_type?: string;
+  quantity_value?: number;
+  quantity_unit?: string;
+  total_stock: number;
+  available_stock: number;
+  reserved_stock: number;
+  min_stock_level: number;
+  is_out_of_stock: boolean;
+  updated_at: string;
+};
+
 export type InventoryItem = {
   id: string;
   product_id: string;
-
   product_name: string;
   sku?: string;
 
@@ -96,6 +134,9 @@ export type InventoryItem = {
 
   location_id: string;
   location_name?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
 
   available_stock: number;
   reserved_stock: number;
@@ -119,7 +160,6 @@ export type ServiceLocation = {
   is_active: boolean;
   created_at: string;
 };
-
 
 export function getToken() {
   return localStorage.getItem('admin_token');
@@ -249,39 +289,58 @@ export const api = {
     };
   },
 
-  getInventory: () => request("/admin/inventory"),
+ getMainInventory: () => request("/admin/inventory/main"),
 
-  createInventory: (payload: {
-    product_id: string;
-    location_id: string;
-    available_stock: number;
+getLocationInventory: (locationId?: string) =>
+  request(
+    locationId
+      ? `/admin/inventory/location?location_id=${locationId}`
+      : "/admin/inventory/location"
+  ),
+
+getInventory: () => request("/admin/inventory/location"),
+
+updateInventory: (
+  id: string,
+  payload: {
+    available_stock?: number;
     reserved_stock?: number;
     min_stock_level?: number;
     remarks?: string;
-  }) =>
-    request("/admin/inventory", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+  }
+) =>
+  request(`/admin/inventory/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  }),
 
-  updateInventory: (
-    id: string,
-    payload: {
-      available_stock?: number;
-      reserved_stock?: number;
-      min_stock_level?: number;
-      remarks?: string;
-    }
-  ) =>
-    request(`/admin/inventory/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    }),
+deleteInventory: (id: string) =>
+  request(`/admin/inventory/${id}`, {
+    method: "DELETE",
+  }),
 
-  deleteInventory: (id: string) =>
-    request(`/admin/inventory/${id}`, {
-      method: "DELETE",
-    }),
+bulkUploadInventory: async (file: File) => {
+  const token = localStorage.getItem("admin_token");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}/admin/inventory/bulk-upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Bulk inventory upload failed");
+  }
+
+  return data;
+},
 
   getLocations: () => request("/admin/locations"),
 

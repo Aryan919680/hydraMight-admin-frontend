@@ -22,6 +22,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { AdminProduct, api, Category, CreateProductPayload, ServiceLocation } from "@/lib/api";
 
+type LocationInventoryForm = {
+  mrp: string;
+  selling_price: string;
+  available_stock: string;
+  reserved_stock: string;
+  min_stock_level: string;
+};
+
 const DEFAULT_LOCATION_ID = import.meta.env.VITE_DEFAULT_LOCATION_ID || "";
 
 const blankProductForm = {
@@ -42,6 +50,7 @@ const blankProductForm = {
   mrp: "",
   selling_price: "",
   available_stock: "",
+  reserved_stock: "0",
   min_stock_level: "0",
 
   image_url: "",
@@ -52,6 +61,8 @@ const blankProductForm = {
   file_size: "",
 
   location_ids: DEFAULT_LOCATION_ID ? [DEFAULT_LOCATION_ID] : [],
+  location_inventory: {} as Record<string, LocationInventoryForm>,
+
   is_featured: false,
 };
 
@@ -110,23 +121,81 @@ export default function Products() {
     );
   }, [products, search]);
 
-  const setField = (key: keyof typeof blankProductForm, value: string | boolean) => {
-    setForm((prev) => {
-      const next = { ...prev, [key]: value };
+ const setField = (
+  key: keyof typeof blankProductForm,
+  value: string | boolean | string[] | Record<string, LocationInventoryForm>
+) => {
+  setForm((prev) => {
+    const next = { ...prev, [key]: value };
 
-      if (key === "portal_type") {
-        if (value === "commercial") {
-          next.quantity_unit = "gallon";
-          next.unit = "can";
-        } else if (value === "household") {
-          next.quantity_unit = "ml";
-          next.unit = "bottle";
-        }
+    if (key === "portal_type") {
+      if (value === "commercial") {
+        next.quantity_unit = "gallon";
+        next.unit = "can";
+      } else if (value === "household") {
+        next.quantity_unit = "ml";
+        next.unit = "bottle";
       }
+    }
 
-      return next;
-    });
-  };
+    return next;
+  });
+};
+
+const toggleLocation = (locationId: string, checked: boolean) => {
+  setForm((prev) => {
+    const nextLocationIds = checked
+      ? Array.from(new Set([...prev.location_ids, locationId]))
+      : prev.location_ids.filter((id) => id !== locationId);
+
+    const nextLocationInventory = { ...prev.location_inventory };
+
+    if (checked && !nextLocationInventory[locationId]) {
+      nextLocationInventory[locationId] = {
+        mrp: prev.mrp || "",
+        selling_price: prev.selling_price || "",
+        available_stock: prev.available_stock || "",
+        reserved_stock: prev.reserved_stock || "0",
+        min_stock_level: prev.min_stock_level || "0",
+      };
+    }
+
+    if (!checked) {
+      delete nextLocationInventory[locationId];
+    }
+
+    return {
+      ...prev,
+      location_ids: nextLocationIds,
+      location_inventory: nextLocationInventory,
+    };
+  });
+};
+
+const setLocationInventoryField = (
+  locationId: string,
+  key: keyof LocationInventoryForm,
+  value: string
+) => {
+  setForm((prev) => ({
+    ...prev,
+    location_inventory: {
+      ...prev.location_inventory,
+      [locationId]: {
+        mrp: prev.location_inventory[locationId]?.mrp || prev.mrp || "",
+        selling_price:
+          prev.location_inventory[locationId]?.selling_price || prev.selling_price || "",
+        available_stock:
+          prev.location_inventory[locationId]?.available_stock || prev.available_stock || "",
+        reserved_stock:
+          prev.location_inventory[locationId]?.reserved_stock || prev.reserved_stock || "0",
+        min_stock_level:
+          prev.location_inventory[locationId]?.min_stock_level || prev.min_stock_level || "0",
+        [key]: value,
+      },
+    },
+  }));
+};
 
   const uploadProductImage = async (file: File) => {
     try {
@@ -169,8 +238,6 @@ export default function Products() {
         !form.name ||
         !form.category_id ||
         form.location_ids.length === 0 ||
-        !form.mrp ||
-        !form.selling_price ||
         !form.portal_type ||
         !form.quantity_value ||
         !form.quantity_unit
@@ -201,44 +268,64 @@ export default function Products() {
         return;
       }
 
+      for (const locationId of form.location_ids) {
+  const loc = form.location_inventory[locationId];
+
+  if (!loc || !loc.mrp || !loc.selling_price) {
+    toast({
+      title: "Missing location pricing",
+      description: "MRP and selling price are required for every selected location.",
+      variant: "destructive",
+    });
+    return;
+  }
+}
+
       setSaving(true);
 
-      const payload: CreateProductPayload = {
-        category_id: form.category_id,
-        name: form.name,
-        sku: form.sku || undefined,
-        short_description: form.short_description || undefined,
-        description: form.description || undefined,
-        brand: form.brand || undefined,
+const payload: CreateProductPayload = {
+  category_id: form.category_id,
+  name: form.name,
+  sku: form.sku || undefined,
+  short_description: form.short_description || undefined,
+  description: form.description || undefined,
+  brand: form.brand || undefined,
 
-        portal_type: form.portal_type,
-        quantity_value: Number(form.quantity_value),
-        quantity_unit: form.quantity_unit,
+  portal_type: form.portal_type,
+  quantity_value: Number(form.quantity_value),
+  quantity_unit: form.quantity_unit,
 
-        unit: form.unit || undefined,
-        weight: form.weight ? Number(form.weight) : null,
-        is_featured: Boolean(form.is_featured),
+  unit: form.unit || undefined,
+  weight: form.weight ? Number(form.weight) : null,
+  is_featured: Boolean(form.is_featured),
 
-        location_ids: form.location_ids,
-        mrp: Number(form.mrp),
-        selling_price: Number(form.selling_price),
-        available_stock: Number(form.available_stock || 0),
-        min_stock_level: Number(form.min_stock_level || 0),
+  location_inventory: form.location_ids.map((locationId) => {
+    const loc = form.location_inventory[locationId];
 
-        images: form.image_url
-          ? [
-            {
-              image_url: form.image_url,
-              storage_bucket: form.storage_bucket || "product-images",
-              storage_path: form.storage_path || undefined,
-              file_name: form.file_name || undefined,
-              mime_type: form.mime_type || undefined,
-              file_size: form.file_size ? Number(form.file_size) : undefined,
-              alt_text: form.name,
-            },
-          ]
-          : [],
-      };
+    return {
+      location_id: locationId,
+      mrp: Number(loc?.mrp || 0),
+      selling_price: Number(loc?.selling_price || 0),
+      available_stock: Number(loc?.available_stock || 0),
+      reserved_stock: Number(loc?.reserved_stock || 0),
+      min_stock_level: Number(loc?.min_stock_level || 0),
+    };
+  }),
+
+  images: form.image_url
+    ? [
+        {
+          image_url: form.image_url,
+          storage_bucket: form.storage_bucket || "product-images",
+          storage_path: form.storage_path || undefined,
+          file_name: form.file_name || undefined,
+          mime_type: form.mime_type || undefined,
+          file_size: form.file_size ? Number(form.file_size) : undefined,
+          alt_text: form.name,
+        },
+      ]
+    : [],
+};
 
       await api.createProduct(payload);
 
@@ -313,15 +400,17 @@ export default function Products() {
             </DialogTrigger>
 
             <ProductDialog
-              form={form}
-              categories={categories}
-              locations={locations}
-              saving={saving}
-              uploadingImage={uploadingImage}
-              onChange={setField}
-              onSubmit={createProduct}
-              onImageUpload={uploadProductImage}
-            />
+  form={form}
+  categories={categories}
+  locations={locations}
+  saving={saving}
+  uploadingImage={uploadingImage}
+  onChange={setField}
+  onSubmit={createProduct}
+  onImageUpload={uploadProductImage}
+  onLocationToggle={toggleLocation}
+  onLocationInventoryChange={setLocationInventoryField}
+/>
           </Dialog>
         }
       />
@@ -401,10 +490,13 @@ export default function Products() {
                           </Badge>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                          <div>MRP: ₹{Number(p.mrp || 0).toFixed(2)}</div>
-                          <div>Stock: {p.available_stock ?? 0}</div>
-                        </div>
+                       <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+  <div>MRP from: ₹{Number(p.mrp || 0).toFixed(2)}</div>
+  <div>Stock: {p.total_available_stock ?? p.available_stock ?? 0}</div>
+  <div>Locations: {p.location_count ?? 0}</div>
+  <div>Total: {p.total_stock ?? 0}</div>
+</div>
+                        
 
                         <div className="flex items-center justify-between">
                           <span className="text-base font-semibold">
@@ -493,9 +585,18 @@ type ProductDialogProps = {
   locations: ServiceLocation[];
   saving: boolean;
   uploadingImage: boolean;
-  onChange: (key: keyof typeof blankProductForm, value: string | boolean) => void;
+  onChange: (
+    key: keyof typeof blankProductForm,
+    value: string | boolean | string[] | Record<string, LocationInventoryForm>
+  ) => void;
   onSubmit: () => void;
   onImageUpload: (file: File) => void;
+  onLocationToggle: (locationId: string, checked: boolean) => void;
+  onLocationInventoryChange: (
+    locationId: string,
+    key: keyof LocationInventoryForm,
+    value: string
+  ) => void;
 };
 
 function ProductDialog({
@@ -507,6 +608,8 @@ function ProductDialog({
   onChange,
   onSubmit,
   onImageUpload,
+  onLocationToggle,
+  onLocationInventoryChange,
 }: ProductDialogProps) {
   const quantityUnits =
     form.portal_type === "commercial"
@@ -627,52 +730,139 @@ function ProductDialog({
           />
         </div>
 
-        <div className="space-y-2 md:col-span-2">
-          <Label>Locations *</Label>
+      <div className="space-y-2 md:col-span-2">
+  <Label>Locations *</Label>
 
-          <div className="rounded-md border p-3 space-y-2">
-            {locations
-              .filter((location) => location.is_active)
-              .map((location) => {
-                const checked = form.location_ids.includes(location.id);
+  <div className="rounded-md border p-3 space-y-2">
+    {locations
+      .filter((location) => location.is_active)
+      .map((location) => {
+        const checked = form.location_ids.includes(location.id);
 
-                return (
-                  <label
-                    key={location.id}
-                    className="flex cursor-pointer items-center justify-between rounded-md p-2 hover:bg-muted"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">
-                        {location.name} - {location.city}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {location.pincode}
-                      </p>
-                    </div>
+        return (
+          <label
+            key={location.id}
+            className="flex cursor-pointer items-center justify-between rounded-md p-2 hover:bg-muted"
+          >
+            <div>
+              <p className="text-sm font-medium">
+                {location.name} - {location.city}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {location.pincode}
+              </p>
+            </div>
 
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...form.location_ids, location.id]
-                          : form.location_ids.filter((id) => id !== location.id);
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(e) => onLocationToggle(location.id, e.target.checked)}
+              className="h-4 w-4"
+            />
+          </label>
+        );
+      })}
+  </div>
 
-                        onChange("location_ids", next);
-                      }}
-                      className="h-4 w-4"
-                    />
-                  </label>
-                );
-              })}
+{form.location_ids.length > 0 && (
+  <div className="space-y-4 md:col-span-2">
+    <div>
+      <Label>Location-wise Pricing & Inventory *</Label>
+      <p className="text-xs text-muted-foreground">
+        Product will be created once. Price and inventory will be saved separately for each location.
+      </p>
+    </div>
+
+    <div className="space-y-3">
+      {form.location_ids.map((locationId) => {
+        const location = locations.find((l) => l.id === locationId);
+        const locForm = form.location_inventory[locationId] || {
+          mrp: "",
+          selling_price: "",
+          available_stock: "",
+          reserved_stock: "0",
+          min_stock_level: "0",
+        };
+
+        return (
+          <div key={locationId} className="rounded-lg border p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold">
+                {location?.name || "Selected Location"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {location?.city} {location?.pincode ? `· ${location.pincode}` : ""}
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-5">
+              <div className="space-y-1">
+                <Label>MRP ₹ *</Label>
+                <Input
+                  type="number"
+                  value={locForm.mrp}
+                  onChange={(e) =>
+                    onLocationInventoryChange(locationId, "mrp", e.target.value)
+                  }
+                  placeholder="150"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Selling ₹ *</Label>
+                <Input
+                  type="number"
+                  value={locForm.selling_price}
+                  onChange={(e) =>
+                    onLocationInventoryChange(locationId, "selling_price", e.target.value)
+                  }
+                  placeholder="120"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Available</Label>
+                <Input
+                  type="number"
+                  value={locForm.available_stock}
+                  onChange={(e) =>
+                    onLocationInventoryChange(locationId, "available_stock", e.target.value)
+                  }
+                  placeholder="20"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Reserved</Label>
+                <Input
+                  type="number"
+                  value={locForm.reserved_stock}
+                  onChange={(e) =>
+                    onLocationInventoryChange(locationId, "reserved_stock", e.target.value)
+                  }
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Min Stock</Label>
+                <Input
+                  type="number"
+                  value={locForm.min_stock_level}
+                  onChange={(e) =>
+                    onLocationInventoryChange(locationId, "min_stock_level", e.target.value)
+                  }
+                  placeholder="5"
+                />
+              </div>
+            </div>
           </div>
-
-          {form.location_ids.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {form.location_ids.length} location(s) selected
-            </p>
-          )}
-        </div>
+        );
+      })}
+    </div>
+  </div>
+)}
+</div>
         <div className="space-y-2">
           <Label>Unit</Label>
           <Input
@@ -682,45 +872,7 @@ function ProductDialog({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label>MRP ₹ *</Label>
-          <Input
-            type="number"
-            value={form.mrp}
-            onChange={(e) => onChange("mrp", e.target.value)}
-            placeholder="150"
-          />
-        </div>
 
-        <div className="space-y-2">
-          <Label>Selling price ₹ *</Label>
-          <Input
-            type="number"
-            value={form.selling_price}
-            onChange={(e) => onChange("selling_price", e.target.value)}
-            placeholder="120"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Available stock</Label>
-          <Input
-            type="number"
-            value={form.available_stock}
-            onChange={(e) => onChange("available_stock", e.target.value)}
-            placeholder="50"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Minimum stock</Label>
-          <Input
-            type="number"
-            value={form.min_stock_level}
-            onChange={(e) => onChange("min_stock_level", e.target.value)}
-            placeholder="5"
-          />
-        </div>
 
         <div className="space-y-2">
           <Label>Weight</Label>
