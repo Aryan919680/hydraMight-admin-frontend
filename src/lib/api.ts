@@ -161,6 +161,52 @@ export type ServiceLocation = {
   created_at: string;
 };
 
+
+export type MainInventoryTransaction = {
+  id: string;
+  main_inventory_id: string;
+  product_id?: string | null;
+  sku: string;
+  transaction_type:
+    | "bulk_upload"
+    | "stock_in"
+    | "stock_out"
+    | "adjustment"
+    | "reserve"
+    | "release_reserve"
+    | "link_product"
+    | "deactivate";
+  quantity: number;
+  old_total_stock: number;
+  new_total_stock: number;
+  old_reserved_stock: number;
+  new_reserved_stock: number;
+  old_allocated_stock: number;
+  new_allocated_stock: number;
+  old_available_stock: number;
+  new_available_stock: number;
+  remarks?: string | null;
+  created_by_name?: string | null;
+  created_at: string;
+};
+
+export type CreateMainInventoryPayload = {
+  sku: string;
+  item_name?: string;
+  total_stock: number;
+  reserved_stock?: number;
+  min_stock_level?: number;
+  remarks?: string;
+};
+
+export type UpdateMainInventoryPayload = {
+  item_name?: string;
+  total_stock: number;
+  reserved_stock?: number;
+  min_stock_level?: number;
+  remarks?: string;
+};
+
 export function getToken() {
   return localStorage.getItem('admin_token');
 }
@@ -289,59 +335,100 @@ export const api = {
     };
   },
 
- getMainInventory: () => request("/admin/inventory/main"),
+ getMainInventory: (params?: {
+  search?: string;
+  status?: "low_stock" | "out_of_stock";
+  link_status?: "pending" | "linked";
+}) => {
+  const query = new URLSearchParams();
 
-getLocationInventory: (locationId?: string) =>
-  request(
-    locationId
-      ? `/admin/inventory/location?location_id=${locationId}`
-      : "/admin/inventory/location"
+  if (params?.search) query.set("search", params.search);
+  if (params?.status) query.set("status", params.status);
+  if (params?.link_status) query.set("link_status", params.link_status);
+
+  const qs = query.toString();
+
+  return request<{ success: boolean; data: MainInventoryItem[] }>(
+    `/admin/main-inventory${qs ? `?${qs}` : ""}`
+  );
+},
+
+getMainInventoryById: (id: string) =>
+  request<{ success: boolean; data: MainInventoryItem }>(
+    `/admin/main-inventory/${id}`
   ),
 
-getInventory: () => request("/admin/inventory/location"),
+createMainInventory: (payload: CreateMainInventoryPayload) =>
+  request<{ success: boolean; data: MainInventoryItem; message: string }>(
+    "/admin/main-inventory",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  ),
 
-updateInventory: (
-  id: string,
-  payload: {
-    available_stock?: number;
-    reserved_stock?: number;
-    min_stock_level?: number;
-    remarks?: string;
-  }
-) =>
-  request(`/admin/inventory/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  }),
+updateMainInventory: (id: string, payload: UpdateMainInventoryPayload) =>
+  request<{ success: boolean; data: MainInventoryItem; message: string }>(
+    `/admin/main-inventory/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }
+  ),
 
-deleteInventory: (id: string) =>
-  request(`/admin/inventory/${id}`, {
-    method: "DELETE",
-  }),
+deleteMainInventory: (id: string) =>
+  request<{ success: boolean; data: MainInventoryItem; message: string }>(
+    `/admin/main-inventory/${id}`,
+    {
+      method: "DELETE",
+    }
+  ),
 
-bulkUploadInventory: async (file: File) => {
+getMainInventoryTransactions: (id: string) =>
+  request<{ success: boolean; data: MainInventoryTransaction[] }>(
+    `/admin/main-inventory/${id}/transactions`
+  ),
+
+linkMainInventoryProducts: () =>
+  request<{ success: boolean; linked_count: number; data: MainInventoryItem[] }>(
+    "/admin/main-inventory/link-products",
+    {
+      method: "POST",
+    }
+  ),
+
+bulkUploadMainInventory: async (file: File) => {
   const token = localStorage.getItem("admin_token");
 
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/admin/inventory/bulk-upload`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/admin/main-inventory/bulk-upload`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    }
+  );
 
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || "Bulk inventory upload failed");
+    throw new Error(data.message || "Bulk upload failed");
   }
 
-  return data;
+  return data as {
+    success: boolean;
+    message: string;
+    total_rows: number;
+    processed: number;
+    failed: number;
+    results: any[];
+  };
 },
-
   getLocations: () => request("/admin/locations"),
 
   createLocation: (payload: {
