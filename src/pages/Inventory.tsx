@@ -396,7 +396,6 @@ export default function Inventory() {
     <div>
       <PageHeader
         title="Main Inventory"
-        description="Manage real stock by SKU. Inventory can exist before product is created for selling."
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={linkProducts} disabled={linking}>
@@ -427,9 +426,7 @@ export default function Inventory() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Bulk Upload Main Inventory</CardTitle>
-          <CardDescription>
-            Upload stock by SKU. If product exists with the same SKU, it will be linked. If not, inventory remains pending.
-          </CardDescription>
+       
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -529,9 +526,7 @@ export default function Inventory() {
       <Card>
         <CardHeader>
           <CardTitle>Main Inventory Records</CardTitle>
-          <CardDescription>
-            SKU-level inventory independent from e-commerce products.
-          </CardDescription>
+        
         </CardHeader>
 
         <CardContent className="space-y-4">
