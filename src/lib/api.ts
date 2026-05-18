@@ -67,40 +67,43 @@ export type AdminProduct = {
   updated_at?: string;
 };
 
+export type ProductImagePayload = {
+  image_url: string;
+  storage_bucket?: string;
+  storage_path?: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
+  alt_text?: string;
+  is_primary?: boolean;
+  display_order?: number;
+};
+
 export type CreateProductPayload = {
   category_id: string;
   name: string;
-  sku?: string;
+  sku: string;
+  brand?: string;
   short_description?: string;
   description?: string;
-  brand?: string;
 
-  portal_type?: string;
-  quantity_value?: number;
-  quantity_unit?: string;
+  ecom_channel: "household" | "commercial";
+
+  quantity_value?: number | null;
+  quantity_unit: "ml" | "litre" | "gallon";
 
   unit?: string;
   weight?: number | null;
+
+  mrp?: number | null;
+  selling_price?: number | null;
+  currency?: string;
+
   is_featured?: boolean;
+  is_available_for_sale?: boolean;
 
-  location_inventory: {
-    location_id: string;
-    mrp: number;
-    selling_price: number;
-    available_stock: number;
-    reserved_stock?: number;
-    min_stock_level?: number;
-  }[];
-
-  images?: {
-    image_url: string;
-    storage_bucket?: string;
-    storage_path?: string;
-    file_name?: string;
-    mime_type?: string;
-    file_size?: number;
-    alt_text?: string;
-  }[];
+  service_location_ids: string[];
+  images: ProductImagePayload[];
 };
 
 
@@ -207,6 +210,101 @@ export type UpdateMainInventoryPayload = {
   remarks?: string;
 };
 
+
+export type InventoryChannel = {
+  id: string;
+  code: "ecom" | "distribution" | "white_label";
+  name: string;
+  is_active: boolean;
+};
+
+export type InventorySubChannel = {
+  id: string;
+  channel_id: string;
+  code: "household" | "commercial" | string;
+  name: string;
+  channel_code?: string;
+  channel_name?: string;
+  is_active: boolean;
+};
+
+export type InventoryLocation = {
+  id: string;
+  channel_id: string;
+  sub_channel_id?: string | null;
+  name: string;
+  code: string;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  location_type: "service_area" | "warehouse" | "distributor" | "partner";
+  channel_code?: string;
+  channel_name?: string;
+  sub_channel_code?: string | null;
+  sub_channel_name?: string | null;
+  is_active: boolean;
+   service_location_id?: string | null;
+};
+
+export type InventoryAllocation = {
+  id: string;
+  main_inventory_id: string;
+  sku: string;
+
+  channel_id: string;
+  channel_code: string;
+  channel_name: string;
+
+  sub_channel_id?: string | null;
+  sub_channel_code?: string | null;
+  sub_channel_name?: string | null;
+
+  location_id: string;
+  location_name: string;
+  location_code: string;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  location_type?: string | null;
+
+  allocated_stock: number;
+  reserved_stock: number;
+  available_stock: number;
+  min_stock_level: number;
+
+  is_out_of_stock: boolean;
+  is_low_stock: boolean;
+
+  remarks?: string | null;
+
+  item_name?: string | null;
+  main_total_stock?: number;
+  main_available_stock?: number;
+  product_link_status?: "pending" | "linked";
+
+  created_at?: string;
+   service_location_id?: string | null;
+  updated_at?: string;
+};
+
+export type InventoryAllocationTransaction = {
+  id: string;
+  allocation_id: string;
+  main_inventory_id: string;
+  sku: string;
+  transaction_type: string;
+  quantity: number;
+  old_allocated_stock: number;
+  new_allocated_stock: number;
+  old_reserved_stock: number;
+  new_reserved_stock: number;
+  old_available_stock: number;
+  new_available_stock: number;
+  remarks?: string | null;
+  created_by_name?: string | null;
+  created_at: string;
+};
+
 export function getToken() {
   return localStorage.getItem('admin_token');
 }
@@ -309,31 +407,37 @@ export const api = {
       method: 'DELETE',
     }),
 
-  uploadProductImage: async (file: File) => {
-    const token = localStorage.getItem("admin_token");
+uploadProductImage: async (file: File) => {
+  const token = localStorage.getItem("admin_token");
 
-    const formData = new FormData();
-    formData.append("image", file);
+  const formData = new FormData();
+  formData.append("image", file);
 
-    const response = await fetch(`${API_BASE_URL}/admin/products/upload-image`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+  const response = await fetch(`${API_BASE_URL}/admin/products/upload-image`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to upload image");
-    }
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || "Image upload failed");
+  }
 
-    return data as {
-      success: boolean;
-      image_url: string;
-    };
-  },
+  return data as {
+    success: boolean;
+    message: string;
+    image_url: string;
+    storage_bucket: string;
+    storage_path: string;
+    file_name: string;
+    mime_type: string;
+    file_size: number;
+  };
+},
 
  getMainInventory: (params?: {
   search?: string;
@@ -418,6 +522,156 @@ bulkUploadMainInventory: async (file: File) => {
 
   if (!response.ok) {
     throw new Error(data.message || "Bulk upload failed");
+  }
+
+  return data as {
+    success: boolean;
+    message: string;
+    total_rows: number;
+    processed: number;
+    failed: number;
+    results: any[];
+  };
+},
+getInventoryChannels: () =>
+  request<{ success: boolean; data: InventoryChannel[] }>(
+    "/admin/inventory-allocations/channels"
+  ),
+
+getInventorySubChannels: (channel?: string) =>
+  request<{ success: boolean; data: InventorySubChannel[] }>(
+    `/admin/inventory-allocations/sub-channels${
+      channel ? `?channel=${channel}` : ""
+    }`
+  ),
+
+getInventoryAllocationLocations: (params?: {
+  channel?: string;
+  sub_channel?: string;
+}) => {
+  const query = new URLSearchParams();
+  if (params?.channel) query.set("channel", params.channel);
+  if (params?.sub_channel) query.set("sub_channel", params.sub_channel);
+
+  return request<{ success: boolean; data: InventoryLocation[] }>(
+    `/admin/inventory-allocations/locations${
+      query.toString() ? `?${query.toString()}` : ""
+    }`
+  );
+},
+
+createInventoryAllocationLocation: (payload: {
+  channel: string;
+  sub_channel?: string;
+  location_code: string;
+  location_name: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  location_type?: string;
+}) =>
+  request<{ success: boolean; data: InventoryLocation; message: string }>(
+    "/admin/inventory-allocations/locations",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  ),
+
+getInventoryAllocations: (params?: {
+  sku?: string;
+  channel?: string;
+  sub_channel?: string;
+  location_id?: string;
+}) => {
+  const query = new URLSearchParams();
+  if (params?.sku) query.set("sku", params.sku);
+  if (params?.channel) query.set("channel", params.channel);
+  if (params?.sub_channel) query.set("sub_channel", params.sub_channel);
+  if (params?.location_id) query.set("location_id", params.location_id);
+
+  return request<{ success: boolean; data: InventoryAllocation[] }>(
+    `/admin/inventory-allocations${
+      query.toString() ? `?${query.toString()}` : ""
+    }`
+  );
+},
+
+createInventoryAllocation: (payload: {
+  sku: string;
+  channel: string;
+  sub_channel?: string;
+  location_code: string;
+  location_name: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  location_type?: string;
+  allocated_stock: number;
+  reserved_stock?: number;
+  min_stock_level?: number;
+  remarks?: string;
+   service_location_id?: string;
+}) =>
+  request<{ success: boolean; data: InventoryAllocation; message: string }>(
+    "/admin/inventory-allocations",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  ),
+
+updateInventoryAllocation: (
+  id: string,
+  payload: {
+    allocated_stock: number;
+    reserved_stock?: number;
+    min_stock_level?: number;
+    remarks?: string;
+  }
+) =>
+  request<{ success: boolean; data: InventoryAllocation; message: string }>(
+    `/admin/inventory-allocations/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }
+  ),
+
+deleteInventoryAllocation: (id: string) =>
+  request<{ success: boolean; data: InventoryAllocation; message: string }>(
+    `/admin/inventory-allocations/${id}`,
+    {
+      method: "DELETE",
+    }
+  ),
+
+getInventoryAllocationTransactions: (id: string) =>
+  request<{ success: boolean; data: InventoryAllocationTransaction[] }>(
+    `/admin/inventory-allocations/${id}/transactions`
+  ),
+
+bulkUploadInventoryAllocations: async (file: File) => {
+  const token = localStorage.getItem("admin_token");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_BASE_URL}/admin/inventory-allocations/bulk-upload`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Sub inventory bulk upload failed");
   }
 
   return data as {
