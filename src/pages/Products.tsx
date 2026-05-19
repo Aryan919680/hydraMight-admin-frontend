@@ -96,6 +96,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
   const [search, setSearch] = useState("");
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [form, setForm] = useState(blankProductForm);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -123,6 +124,51 @@ const [uploadingImage, setUploadingImage] = useState(false);
     } finally {
       setLoading(false);
     }
+  };
+
+  const openCreateDialog = () => {
+    setEditingProductId(null);
+    setForm(blankProductForm);
+    setProductDialogOpen(true);
+  };
+
+  const openEditDialog = (product: AdminProduct) => {
+    const p = product as any;
+    setEditingProductId(product.id);
+    setForm({
+      ...blankProductForm,
+      name: p.name || "",
+      sku: p.sku || "",
+      brand: p.brand || "",
+      category_id: p.category_id || "",
+      short_description: p.short_description || "",
+      description: p.description || "",
+      ecom_channel: p.ecom_channel || p.portal_type || "household",
+      quantity_value:
+        p.quantity_value !== undefined && p.quantity_value !== null
+          ? String(p.quantity_value)
+          : "",
+      quantity_unit: p.quantity_unit || "ml",
+      unit: p.unit || "bottle",
+      weight:
+        p.weight !== undefined && p.weight !== null ? String(p.weight) : "",
+      mrp: p.mrp !== undefined && p.mrp !== null ? String(p.mrp) : "",
+      selling_price:
+        p.selling_price !== undefined && p.selling_price !== null
+          ? String(p.selling_price)
+          : "",
+      currency: p.currency || "INR",
+      service_location_ids: Array.isArray(p.service_location_ids)
+        ? p.service_location_ids
+        : [],
+      images: Array.isArray(p.images) ? p.images : [],
+      is_featured: Boolean(p.is_featured),
+      is_available_for_sale:
+        p.is_available_for_sale !== undefined
+          ? Boolean(p.is_available_for_sale)
+          : Boolean(p.is_active),
+    });
+    setProductDialogOpen(true);
   };
 
   useEffect(() => {
@@ -227,7 +273,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
     });
   };
 
-  const createProduct = async () => {
+  const submitProduct = async () => {
     try {
       if (
         !form.name ||
@@ -303,20 +349,30 @@ const [uploadingImage, setUploadingImage] = useState(false);
         images: form.images,
       };
 
-      await api.createProduct(payload);
-
-      toast({
-        title: "Product created",
-        description:
-          "Ecom product created. Inventory is linked automatically by SKU if available.",
-      });
+      if (editingProductId) {
+        await api.updateProduct(editingProductId, payload as any);
+        toast({
+          title: "Product updated",
+          description: "Ecom product updated successfully.",
+        });
+      } else {
+        await api.createProduct(payload);
+        toast({
+          title: "Product created",
+          description:
+            "Ecom product created. Inventory is linked automatically by SKU if available.",
+        });
+      }
 
       setForm(blankProductForm);
+      setEditingProductId(null);
       setProductDialogOpen(false);
       await loadData();
     } catch (error) {
       toast({
-        title: "Failed to create product",
+        title: editingProductId
+          ? "Failed to update product"
+          : "Failed to create product",
         description:
           error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
@@ -399,10 +455,16 @@ const [uploadingImage, setUploadingImage] = useState(false);
         actions={
           <Dialog
             open={productDialogOpen}
-            onOpenChange={setProductDialogOpen}
+            onOpenChange={(open) => {
+              setProductDialogOpen(open);
+              if (!open) {
+                setEditingProductId(null);
+                setForm(blankProductForm);
+              }
+            }}
           >
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={openCreateDialog}>
                 <Plus className="mr-1 h-4 w-4" />
                 New Ecom Product
               </Button>
@@ -410,6 +472,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
 
            <ProductDialog
   form={form}
+  isEditing={Boolean(editingProductId)}
   categories={categories}
   locations={locations}
   saving={saving}
@@ -418,7 +481,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
   onToggleLocation={toggleServiceLocation}
   onUploadImage={uploadProductImage}
   onRemoveImage={removeImage}
-  onSubmit={createProduct}
+  onSubmit={submitProduct}
 />
           </Dialog>
         }
@@ -564,8 +627,8 @@ const [uploadingImage, setUploadingImage] = useState(false);
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                disabled
-                                title="Edit product can be added next"
+                                title="Edit product"
+                                onClick={() => openEditDialog(p)}
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -601,6 +664,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
 
 type ProductDialogProps = {
   form: typeof blankProductForm;
+  isEditing: boolean;
   categories: Category[];
   locations: ServiceLocation[];
   saving: boolean;
@@ -620,6 +684,7 @@ type ProductDialogProps = {
 };
 function ProductDialog({
   form,
+  isEditing,
   categories,
   locations,
   saving,
@@ -636,7 +701,9 @@ function ProductDialog({
   return (
     <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>New Ecom Product</DialogTitle>
+        <DialogTitle>
+          {isEditing ? "Edit Ecom Product" : "New Ecom Product"}
+        </DialogTitle>
         <DialogDescription>
           Product is for ecommerce selling only. Stock is linked by SKU and
           service location inventory.
@@ -932,7 +999,7 @@ function ProductDialog({
       <DialogFooter>
         <Button onClick={onSubmit} disabled={saving}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Publish Ecom Product
+          {isEditing ? "Save Changes" : "Publish Ecom Product"}
         </Button>
       </DialogFooter>
     </DialogContent>
