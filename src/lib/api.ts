@@ -388,6 +388,9 @@ export const api = {
   getProducts: (limit = 100, offset = 0) =>
     request<AdminProduct[]>(`/admin/products?limit=${limit}&offset=${offset}`),
 
+  getProductById: (id: string) =>
+    request<AdminProduct>(`/admin/products/${id}`),
+
   createProduct: (payload: CreateProductPayload) =>
     request<AdminProduct>('/admin/products', {
       method: 'POST',
