@@ -167,7 +167,13 @@ const [selectedMainInventory, setSelectedMainInventory] =
 
 const [mainInventoryForm, setMainInventoryForm] =
   useState<MainInventoryForm>(blankMainInventoryForm);
+const [bulkMainInventoryFile, setBulkMainInventoryFile] =
+  useState<File | null>(null);
 
+const [bulkMainInventoryResult, setBulkMainInventoryResult] =
+  useState<any | null>(null);
+
+const [uploadingMainInventory, setUploadingMainInventory] = useState(false);
   const selectedChannel = channels.find((c) => c.code === form.channel);
   const currentSubChannels = subChannels.filter(
     (s) => s.channel_code === form.channel
@@ -659,6 +665,65 @@ const downloadSubInventorySample = () => {
   URL.revokeObjectURL(url);
 };
 
+const uploadMainInventory = async () => {
+  try {
+    if (!bulkMainInventoryFile) {
+      toast({
+        title: "CSV required",
+        description: "Please select a main inventory CSV file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingMainInventory(true);
+    setBulkMainInventoryResult(null);
+
+    const response = await api.bulkUploadMainInventory(bulkMainInventoryFile);
+
+    setBulkMainInventoryResult(response);
+
+    toast({
+      title: "Main inventory upload completed",
+      description: `${response.processed || 0} processed, ${
+        response.failed || 0
+      } failed.`,
+    });
+
+    setBulkMainInventoryFile(null);
+
+    await loadMainInventory();
+  } catch (error) {
+    toast({
+      title: "Main inventory bulk upload failed",
+      description:
+        error instanceof Error ? error.message : "Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setUploadingMainInventory(false);
+  }
+};
+
+const downloadMainInventorySample = () => {
+  const csv = [
+    "sku,item_name,total_stock,reserved_stock,min_stock_level,remarks",
+    "PRO-001,RINSL Gold Premium Liquid Detergent,1000,0,20,Opening stock",
+    "PRO-002,RINSL Gold Lemon Phenyl,500,0,10,Opening stock",
+    "PRO-003,RINSL Gold Lavender Phenyl,500,0,10,Opening stock",
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "main-inventory-upload-sample.csv";
+  link.click();
+
+  URL.revokeObjectURL(url);
+};
+
   const filteredLocationsForForm = locations.filter((location) => {
     if (location.channel_code !== form.channel) return false;
     if (form.channel === "ecom") {
@@ -876,6 +941,120 @@ const saveMainInventory = async () => {
             </CardHeader>
 
             <CardContent className="space-y-4">
+              <div className="rounded-lg border bg-muted/20 p-4">
+  <div className="mb-3">
+    <p className="text-sm font-medium">Bulk Upload Main Inventory</p>
+    <p className="text-xs text-muted-foreground">
+      Upload central SKU stock. Product can be linked later by same SKU.
+    </p>
+  </div>
+
+  <div className="mb-3 rounded-md border bg-background p-3">
+    <p className="mb-1 text-xs font-medium">CSV columns</p>
+    <code className="text-xs text-muted-foreground">
+      sku, item_name, total_stock, reserved_stock, min_stock_level, remarks
+    </code>
+  </div>
+
+  <div className="flex flex-col gap-3 md:flex-row md:items-center">
+    <Input
+      type="file"
+      accept=".csv,text/csv"
+      onChange={(e) =>
+        setBulkMainInventoryFile(e.target.files?.[0] || null)
+      }
+    />
+
+    <Button
+      type="button"
+      variant="outline"
+      onClick={downloadMainInventorySample}
+    >
+      <Download className="mr-2 h-4 w-4" />
+      Sample CSV
+    </Button>
+
+    <Button
+      type="button"
+      onClick={uploadMainInventory}
+      disabled={uploadingMainInventory}
+    >
+      {uploadingMainInventory ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      ) : (
+        <Upload className="mr-2 h-4 w-4" />
+      )}
+      Upload Main Inventory
+    </Button>
+  </div>
+
+  {bulkMainInventoryResult && (
+    <div className="mt-4 rounded-lg border bg-background p-4">
+      <div className="mb-3 grid gap-3 md:grid-cols-3">
+        <div>
+          <p className="text-xs text-muted-foreground">Total Rows</p>
+          <p className="text-lg font-semibold">
+            {bulkMainInventoryResult.total_rows || 0}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-muted-foreground">Processed</p>
+          <p className="text-lg font-semibold text-success">
+            {bulkMainInventoryResult.processed || 0}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-muted-foreground">Failed</p>
+          <p className="text-lg font-semibold text-destructive">
+            {bulkMainInventoryResult.failed || 0}
+          </p>
+        </div>
+      </div>
+
+      {Array.isArray(bulkMainInventoryResult.results) &&
+        bulkMainInventoryResult.results.length > 0 && (
+          <div className="max-h-72 overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Row</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Message</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {bulkMainInventoryResult.results.map((row: any) => (
+                  <TableRow key={row.row}>
+                    <TableCell>{row.row}</TableCell>
+
+                    <TableCell className="font-mono text-xs">
+                      {row.sku || "-"}
+                    </TableCell>
+
+                    <TableCell>
+                      <Badge
+                        variant={row.success ? "default" : "destructive"}
+                      >
+                        {row.success ? "Success" : "Failed"}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-xs text-muted-foreground">
+                      {row.message || "Processed"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+    </div>
+  )}
+</div>
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -988,6 +1167,7 @@ const saveMainInventory = async () => {
                 </Table>
               )}
             </CardContent>
+            
           </Card>
         </TabsContent>
 
