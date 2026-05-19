@@ -28,6 +28,7 @@ import {
 const items = [
   // { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Products (CMS)", url: "/products", icon: Package },
+  { title: "Categories", url: "/categories", icon: Tags },
   { title: "Inventory", url: "/inventory", icon: Boxes },
   // { title: "Pricing", url: "/pricing", icon: Tags },
   // { title: "Orders", url: "/orders", icon: ShoppingCart },
