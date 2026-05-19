@@ -8,6 +8,7 @@ import AdminLayout from "./components/AdminLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
+import Categories from "./pages/Categories";
 import Inventory from "./pages/Inventory";
 import Pricing from "./pages/Pricing";
 import Orders from "./pages/Orders";
@@ -31,6 +32,7 @@ const App = () => (
             <Route element={<AdminLayout />}>
               <Route path="/" element={<Products />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/categories" element={<Categories />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/orders" element={<Orders />} />
