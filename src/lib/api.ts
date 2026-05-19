@@ -123,6 +123,11 @@ export type MainInventoryItem = {
   min_stock_level: number;
   is_out_of_stock: boolean;
   updated_at: string;
+  allocated_stock?: number;
+  is_low_stock?: boolean;
+  item_name?: string | null;
+  remarks?: string | null;
+  product_link_status?: "pending" | "linked";
 };
 
 export type InventoryItem = {
@@ -154,6 +159,7 @@ export type InventoryItem = {
 export type ServiceLocation = {
   id: string;
   name: string;
+  code?: string;
   city: string;
   state: string;
   pincode: string;
@@ -284,6 +290,10 @@ export type InventoryAllocation = {
 
   created_at?: string;
    service_location_id?: string | null;
+  service_location_name?: string | null;
+  service_location_city?: string | null;
+  service_location_state?: string | null;
+  service_location_pincode?: string | null;
   updated_at?: string;
 };
 
@@ -331,9 +341,9 @@ export function clearSession() {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const token = getToken();
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
 
   if (token) {
@@ -452,7 +462,7 @@ uploadProductImage: async (file: File) => {
 
   const qs = query.toString();
 
-  return request<{ success: boolean; data: MainInventoryItem[] }>(
+  return request<MainInventoryItem[]>(
     `/admin/main-inventory${qs ? `?${qs}` : ""}`
   );
 },
@@ -534,12 +544,12 @@ bulkUploadMainInventory: async (file: File) => {
   };
 },
 getInventoryChannels: () =>
-  request<{ success: boolean; data: InventoryChannel[] }>(
+  request<InventoryChannel[]>(
     "/admin/inventory-allocations/channels"
   ),
 
 getInventorySubChannels: (channel?: string) =>
-  request<{ success: boolean; data: InventorySubChannel[] }>(
+  request<InventorySubChannel[]>(
     `/admin/inventory-allocations/sub-channels${
       channel ? `?channel=${channel}` : ""
     }`
@@ -553,7 +563,7 @@ getInventoryAllocationLocations: (params?: {
   if (params?.channel) query.set("channel", params.channel);
   if (params?.sub_channel) query.set("sub_channel", params.sub_channel);
 
-  return request<{ success: boolean; data: InventoryLocation[] }>(
+  return request<InventoryLocation[]>(
     `/admin/inventory-allocations/locations${
       query.toString() ? `?${query.toString()}` : ""
     }`
@@ -590,7 +600,7 @@ getInventoryAllocations: (params?: {
   if (params?.sub_channel) query.set("sub_channel", params.sub_channel);
   if (params?.location_id) query.set("location_id", params.location_id);
 
-  return request<{ success: boolean; data: InventoryAllocation[] }>(
+  return request<InventoryAllocation[]>(
     `/admin/inventory-allocations${
       query.toString() ? `?${query.toString()}` : ""
     }`
@@ -647,7 +657,7 @@ deleteInventoryAllocation: (id: string) =>
   ),
 
 getInventoryAllocationTransactions: (id: string) =>
-  request<{ success: boolean; data: InventoryAllocationTransaction[] }>(
+  request<InventoryAllocationTransaction[]>(
     `/admin/inventory-allocations/${id}/transactions`
   ),
 
@@ -683,7 +693,7 @@ bulkUploadInventoryAllocations: async (file: File) => {
     results: any[];
   };
 },
-  getLocations: () => request("/admin/locations"),
+  getLocations: () => request<ServiceLocation[]>("/admin/locations"),
 
   createLocation: (payload: {
     name: string;
