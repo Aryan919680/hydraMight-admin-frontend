@@ -82,6 +82,7 @@ const blankProductForm = {
 
   is_featured: false,
   is_available_for_sale: true,
+  image_url_input: "",
 };
 
 export default function Products() {
