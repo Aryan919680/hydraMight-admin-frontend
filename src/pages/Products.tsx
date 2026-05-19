@@ -688,6 +688,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
 type ProductDialogProps = {
   form: typeof blankProductForm;
   isEditing: boolean;
+  loadingProduct?: boolean;
   categories: Category[];
   locations: ServiceLocation[];
   saving: boolean;
@@ -708,6 +709,7 @@ type ProductDialogProps = {
 function ProductDialog({
   form,
   isEditing,
+  loadingProduct,
   categories,
   locations,
   saving,
@@ -733,6 +735,12 @@ function ProductDialog({
         </DialogDescription>
       </DialogHeader>
 
+      {loadingProduct ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Loading product details...
+        </div>
+      ) : (
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
           <Label>Product name *</Label>
@@ -1018,9 +1026,10 @@ function ProductDialog({
           <Label htmlFor="available">Available for sale</Label>
         </div>
       </div>
+      )}
 
       <DialogFooter>
-        <Button onClick={onSubmit} disabled={saving}>
+        <Button onClick={onSubmit} disabled={saving || loadingProduct}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isEditing ? "Save Changes" : "Publish Ecom Product"}
         </Button>
