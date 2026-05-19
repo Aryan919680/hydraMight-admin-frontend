@@ -97,6 +97,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [form, setForm] = useState(blankProductForm);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [loadingProduct, setLoadingProduct] = useState(false);
 
   const loadData = async () => {
     try {
@@ -132,9 +133,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
     setProductDialogOpen(true);
   };
 
-  const openEditDialog = (product: AdminProduct) => {
-    const p = product as any;
-    setEditingProductId(product.id);
+  const populateFormFromProduct = (p: any) => {
     setForm({
       ...blankProductForm,
       name: p.name || "",
@@ -160,6 +159,8 @@ const [uploadingImage, setUploadingImage] = useState(false);
       currency: p.currency || "INR",
       service_location_ids: Array.isArray(p.service_location_ids)
         ? p.service_location_ids
+        : Array.isArray(p.service_locations)
+        ? p.service_locations.map((l: any) => l.id || l.location_id).filter(Boolean)
         : [],
       images: Array.isArray(p.images) ? p.images : [],
       is_featured: Boolean(p.is_featured),
@@ -168,7 +169,28 @@ const [uploadingImage, setUploadingImage] = useState(false);
           ? Boolean(p.is_available_for_sale)
           : Boolean(p.is_active),
     });
+  };
+
+  const openEditDialog = async (product: AdminProduct) => {
+    setEditingProductId(product.id);
+    setForm(blankProductForm);
     setProductDialogOpen(true);
+    setLoadingProduct(true);
+    try {
+      const response = await api.getProductById(product.id);
+      const detail = (response.data as any) || product;
+      populateFormFromProduct(detail);
+    } catch (error) {
+      toast({
+        title: "Failed to load product details",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+      populateFormFromProduct(product);
+    } finally {
+      setLoadingProduct(false);
+    }
   };
 
   useEffect(() => {
@@ -473,6 +495,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
            <ProductDialog
   form={form}
   isEditing={Boolean(editingProductId)}
+  loadingProduct={loadingProduct}
   categories={categories}
   locations={locations}
   saving={saving}
@@ -665,6 +688,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
 type ProductDialogProps = {
   form: typeof blankProductForm;
   isEditing: boolean;
+  loadingProduct?: boolean;
   categories: Category[];
   locations: ServiceLocation[];
   saving: boolean;
@@ -685,6 +709,7 @@ type ProductDialogProps = {
 function ProductDialog({
   form,
   isEditing,
+  loadingProduct,
   categories,
   locations,
   saving,
@@ -710,6 +735,12 @@ function ProductDialog({
         </DialogDescription>
       </DialogHeader>
 
+      {loadingProduct ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Loading product details...
+        </div>
+      ) : (
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
           <Label>Product name *</Label>
@@ -995,9 +1026,10 @@ function ProductDialog({
           <Label htmlFor="available">Available for sale</Label>
         </div>
       </div>
+      )}
 
       <DialogFooter>
-        <Button onClick={onSubmit} disabled={saving}>
+        <Button onClick={onSubmit} disabled={saving || loadingProduct}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isEditing ? "Save Changes" : "Publish Ecom Product"}
         </Button>
