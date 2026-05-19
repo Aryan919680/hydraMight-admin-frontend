@@ -97,6 +97,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [form, setForm] = useState(blankProductForm);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [loadingProduct, setLoadingProduct] = useState(false);
 
   const loadData = async () => {
     try {
@@ -132,9 +133,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
     setProductDialogOpen(true);
   };
 
-  const openEditDialog = (product: AdminProduct) => {
-    const p = product as any;
-    setEditingProductId(product.id);
+  const populateFormFromProduct = (p: any) => {
     setForm({
       ...blankProductForm,
       name: p.name || "",
@@ -160,6 +159,8 @@ const [uploadingImage, setUploadingImage] = useState(false);
       currency: p.currency || "INR",
       service_location_ids: Array.isArray(p.service_location_ids)
         ? p.service_location_ids
+        : Array.isArray(p.service_locations)
+        ? p.service_locations.map((l: any) => l.id || l.location_id).filter(Boolean)
         : [],
       images: Array.isArray(p.images) ? p.images : [],
       is_featured: Boolean(p.is_featured),
@@ -168,7 +169,28 @@ const [uploadingImage, setUploadingImage] = useState(false);
           ? Boolean(p.is_available_for_sale)
           : Boolean(p.is_active),
     });
+  };
+
+  const openEditDialog = async (product: AdminProduct) => {
+    setEditingProductId(product.id);
+    setForm(blankProductForm);
     setProductDialogOpen(true);
+    setLoadingProduct(true);
+    try {
+      const response = await api.getProductById(product.id);
+      const detail = (response.data as any) || product;
+      populateFormFromProduct(detail);
+    } catch (error) {
+      toast({
+        title: "Failed to load product details",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+      populateFormFromProduct(product);
+    } finally {
+      setLoadingProduct(false);
+    }
   };
 
   useEffect(() => {
@@ -473,6 +495,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
            <ProductDialog
   form={form}
   isEditing={Boolean(editingProductId)}
+  loadingProduct={loadingProduct}
   categories={categories}
   locations={locations}
   saving={saving}
