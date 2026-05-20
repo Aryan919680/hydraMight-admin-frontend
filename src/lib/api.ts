@@ -385,7 +385,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  getProducts: (limit = 100, offset = 0) =>
+  getProducts: (limit = 200, offset = 0) =>
     request<AdminProduct[]>(`/admin/products?limit=${limit}&offset=${offset}`),
 
   getProductById: (id: string) =>
