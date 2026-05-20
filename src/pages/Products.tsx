@@ -160,7 +160,19 @@ const [uploadingImage, setUploadingImage] = useState(false);
       service_location_ids: Array.isArray(p.service_location_ids)
         ? p.service_location_ids
         : Array.isArray(p.service_locations)
-        ? p.service_locations.map((l: any) => l.id || l.location_id).filter(Boolean)
+        ? p.service_locations
+            .map(
+              (l: any) =>
+                l?.service_location_id || l?.location_id || l?.id || l,
+            )
+            .filter((v: any) => typeof v === "string" && v.length > 0)
+        : Array.isArray(p.locations)
+        ? p.locations
+            .map(
+              (l: any) =>
+                l?.service_location_id || l?.location_id || l?.id || l,
+            )
+            .filter((v: any) => typeof v === "string" && v.length > 0)
         : [],
       images: Array.isArray(p.images) ? p.images : [],
       is_featured: Boolean(p.is_featured),
@@ -569,7 +581,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
                             <img
                               src={(p as any).primary_image}
                               alt={p.name}
-                              className="h-full w-full object-cover"
+                              className="h-full w-full object-contain"
                             />
                           ) : (
                             <ImageIcon className="h-10 w-10 text-muted-foreground" />
@@ -983,7 +995,7 @@ function ProductDialog({
           <img
             src={img.image_url}
             alt={img.alt_text || form.name}
-            className="h-24 w-full object-cover"
+            className="h-24 w-full object-contain"
           />
 
           <div className="flex items-center justify-between p-2">
