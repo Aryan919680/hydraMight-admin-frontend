@@ -10,6 +10,7 @@ import {
   MapPin,
   ScrollText,
   Sparkles,
+  Building2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -35,6 +36,7 @@ const items = [
   // { title: "Customers", url: "/customers", icon: Users },
   // { title: "Users & Roles", url: "/users", icon: UserCog },
   { title: "Locations", url: "/locations", icon: MapPin },
+  { title: "Commercial Signups", url: "/commercial-signups", icon: Building2 },
   // { title: "Audit Logs", url: "/audit", icon: ScrollText },
 ];
 

@@ -735,4 +735,37 @@ bulkUploadInventoryAllocations: async (file: File) => {
     request(`/admin/locations/${id}`, {
       method: "DELETE",
     }),
+
+  getCommercialSignups: (status: "pending" | "approved" | "rejected" = "pending") =>
+    request<CommercialSignup[]>(`/admin/commercial-signups?status=${status}`),
+
+  approveCommercialSignup: (id: string, admin_remarks?: string) =>
+    request<CommercialSignup>(`/admin/commercial-signups/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ admin_remarks: admin_remarks || "" }),
+    }),
+
+  rejectCommercialSignup: (id: string, admin_remarks?: string) =>
+    request<CommercialSignup>(`/admin/commercial-signups/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ admin_remarks: admin_remarks || "" }),
+    }),
+};
+
+export type CommercialSignup = {
+  id: string;
+  full_name?: string;
+  email?: string;
+  mobile?: string;
+  company_name?: string;
+  gst_number?: string;
+  business_type?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  status: "pending" | "approved" | "rejected";
+  admin_remarks?: string | null;
+  created_at?: string;
+  [key: string]: any;
 };

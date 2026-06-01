@@ -16,6 +16,7 @@ import Customers from "./pages/Customers";
 import UsersAndRoles from "./pages/UsersAndRoles";
 import Locations from "./pages/Locations";
 import AuditLogs from "./pages/AuditLogs";
+import CommercialSignups from "./pages/CommercialSignups";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/customers" element={<Customers />} />
             <Route path="/users" element={<UsersAndRoles />} />
             <Route path="/locations" element={<Locations />} />
+            <Route path="/commercial-signups" element={<CommercialSignups />} />
               <Route path="/audit" element={<AuditLogs />} />
             </Route>
           </Route>
