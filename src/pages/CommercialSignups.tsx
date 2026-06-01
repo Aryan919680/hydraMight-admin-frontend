@@ -74,7 +74,7 @@ export default function CommercialSignups() {
   const filtered = items.filter((s) => {
     const q = search.toLowerCase().trim();
     if (!q) return true;
-    return [s.full_name, s.email, s.mobile, s.company_name, s.gst_number, s.city]
+    return [s.contact_person, s.email, s.phone, s.business_name, s.gst_number, s.city]
       .some((v) => v && String(v).toLowerCase().includes(q));
   });
 
@@ -139,10 +139,10 @@ export default function CommercialSignups() {
                 ) : (
                   filtered.map((s) => (
                     <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.full_name || "—"}</TableCell>
+                      <TableCell className="font-medium">{s.contact_person || "—"}</TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span>{s.company_name || "—"}</span>
+                          <span>{s.business_name || "—"}</span>
                           {s.gst_number && (
                             <span className="text-xs text-muted-foreground">GST: {s.gst_number}</span>
                           )}
@@ -151,7 +151,7 @@ export default function CommercialSignups() {
                       <TableCell>
                         <div className="flex flex-col text-sm">
                           <span>{s.email || "—"}</span>
-                          <span className="text-muted-foreground">{s.mobile || ""}</span>
+                          <span className="text-muted-foreground">{s.phone || ""}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -192,13 +192,16 @@ export default function CommercialSignups() {
           </DialogHeader>
           {selected && (
             <div className="grid gap-3 text-sm">
-              <Detail label="Full name" value={selected.full_name} />
+              <Detail label="Contact person" value={selected.contact_person} />
+              <Detail label="Business name" value={selected.business_name} />
               <Detail label="Email" value={selected.email} />
-              <Detail label="Mobile" value={selected.mobile} />
-              <Detail label="Company" value={selected.company_name} />
+              <Detail label="Phone" value={selected.phone} />
               <Detail label="GST number" value={selected.gst_number} />
               <Detail label="Business type" value={selected.business_type} />
-              <Detail label="Address" value={selected.address} />
+              <Detail
+                label="Address"
+                value={[selected.address_line1, selected.address_line2].filter(Boolean).join(", ")}
+              />
               <Detail
                 label="City / State / Pincode"
                 value={[selected.city, selected.state, selected.pincode].filter(Boolean).join(", ")}
@@ -226,7 +229,7 @@ export default function CommercialSignups() {
           </DialogHeader>
           <div className="grid gap-3">
             <p className="text-sm text-muted-foreground">
-              {actionDialog?.item.company_name || actionDialog?.item.full_name}
+              {actionDialog?.item.business_name || actionDialog?.item.contact_person}
             </p>
             <div className="grid gap-2">
               <Label>Admin remarks</Label>

@@ -754,18 +754,25 @@ bulkUploadInventoryAllocations: async (file: File) => {
 
 export type CommercialSignup = {
   id: string;
-  full_name?: string;
+  business_name?: string;
+  contact_person?: string;
   email?: string;
-  mobile?: string;
-  company_name?: string;
+  phone?: string;
   gst_number?: string;
   business_type?: string;
-  address?: string;
+  address_line1?: string;
+  address_line2?: string;
   city?: string;
   state?: string;
   pincode?: string;
   status: "pending" | "approved" | "rejected";
   admin_remarks?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  rejected_by?: string | null;
+  rejected_at?: string | null;
+  created_user_id?: string | null;
   created_at?: string;
+  updated_at?: string;
   [key: string]: any;
 };
