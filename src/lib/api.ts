@@ -750,6 +750,25 @@ bulkUploadInventoryAllocations: async (file: File) => {
       method: "POST",
       body: JSON.stringify({ admin_remarks: admin_remarks || "" }),
     }),
+
+  getStockists: () => request<Stockist[]>(`/admin/distributors/stockists`),
+
+  createStockist: (payload: CreateStockistPayload) =>
+    request<Stockist>(`/admin/distributors/stockists`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  getAgencies: () => request<Agency[]>(`/admin/distributors/agencies`),
+
+  getAgenciesByStockist: (stockistId: string) =>
+    request<Agency[]>(`/admin/distributors/stockists/${stockistId}/agencies`),
+
+  createAgency: (payload: CreateAgencyPayload) =>
+    request<Agency>(`/admin/distributors/agencies`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 export type CommercialSignup = {
@@ -775,4 +794,69 @@ export type CommercialSignup = {
   created_at?: string;
   updated_at?: string;
   [key: string]: any;
+};
+
+export type Stockist = {
+  id: string;
+  gst_number?: string;
+  business_name?: string;
+  contact_person?: string;
+  mobile?: string;
+  email?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+};
+
+export type CreateStockistPayload = {
+  gst_number: string;
+  business_name: string;
+  contact_person: string;
+  mobile: string;
+  email: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+};
+
+export type Agency = {
+  id: string;
+  stockist_id?: string;
+  stockist_name?: string;
+  gst_number?: string;
+  business_name?: string;
+  contact_person?: string;
+  mobile?: string;
+  email?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+};
+
+export type CreateAgencyPayload = {
+  stockist_id: string;
+  gst_number: string;
+  business_name: string;
+  contact_person: string;
+  mobile: string;
+  email: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  state: string;
+  pincode: string;
 };
