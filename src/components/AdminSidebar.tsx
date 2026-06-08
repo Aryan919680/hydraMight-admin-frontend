@@ -11,6 +11,7 @@ import {
   ScrollText,
   Sparkles,
   Building2,
+  Truck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +38,7 @@ const items = [
   // { title: "Users & Roles", url: "/users", icon: UserCog },
   { title: "Locations", url: "/locations", icon: MapPin },
   { title: "Commercial Signups", url: "/commercial-signups", icon: Building2 },
+  { title: "Distributors", url: "/distributors", icon: Truck },
   // { title: "Audit Logs", url: "/audit", icon: ScrollText },
 ];
 
