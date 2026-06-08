@@ -769,6 +769,21 @@ bulkUploadInventoryAllocations: async (file: File) => {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+    getAgencyRequests: (params?: { status?: string }) =>
+  request(`/admin/distributors/agency-requests?status=${params?.status || "pending"}`),
+
+approveAgencyRequest: (requestId: string, payload: { stockist_id?: string }) =>
+  request(`/admin/distributors/agency-requests/${requestId}/approve`, {
+    method: "POST",
+    body: JSON.stringify(payload || {}),
+  }),
+
+rejectAgencyRequest: (requestId: string, payload: { rejection_reason?: string }) =>
+  request(`/admin/distributors/agency-requests/${requestId}/reject`, {
+    method: "POST",
+    body: JSON.stringify(payload || {}),
+  }),
 };
 
 export type CommercialSignup = {
@@ -825,6 +840,7 @@ export type CreateStockistPayload = {
   city: string;
   state: string;
   pincode: string;
+  territory: string;
 };
 
 export type Agency = {
