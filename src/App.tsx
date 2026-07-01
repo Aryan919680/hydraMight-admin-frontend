@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "./pages/NotFound.tsx";
 import AdminLayout from "./components/AdminLayout";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import Categories from "./pages/Categories";
 import Inventory from "./pages/Inventory";
@@ -18,6 +17,7 @@ import Locations from "./pages/Locations";
 import AuditLogs from "./pages/AuditLogs";
 import CommercialSignups from "./pages/CommercialSignups";
 import Distributors from "./pages/Distributors";
+import DistributorProducts from "./pages/DistributorProducts";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -27,25 +27,29 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+
           <Route element={<ProtectedRoute />}>
             <Route element={<AdminLayout />}>
               <Route path="/" element={<Products />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/categories" element={<Categories />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/users" element={<UsersAndRoles />} />
-            <Route path="/locations" element={<Locations />} />
-            <Route path="/commercial-signups" element={<CommercialSignups />} />
-            <Route path="/distributors" element={<Distributors />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/categories" element={<Categories />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/orders" element={<Orders />} />
+              <Route path="/customers" element={<Customers />} />
+              <Route path="/users" element={<UsersAndRoles />} />
+              <Route path="/locations" element={<Locations />} />
+              <Route path="/commercial-signups" element={<CommercialSignups />} />
+              <Route path="/distributors" element={<Distributors />} />
+              <Route path="/distributor-products" element={<DistributorProducts />} />
               <Route path="/audit" element={<AuditLogs />} />
             </Route>
           </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

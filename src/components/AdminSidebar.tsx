@@ -1,14 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
   Package,
   Boxes,
   Tags,
   ShoppingCart,
-  Users,
-  UserCog,
   MapPin,
-  ScrollText,
   Sparkles,
   Building2,
   Truck,
@@ -23,29 +19,25 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 
 const items = [
-  // { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Products (CMS)", url: "/products", icon: Package },
   { title: "Categories", url: "/categories", icon: Tags },
   { title: "Inventory", url: "/inventory", icon: Boxes },
-  // { title: "Pricing", url: "/pricing", icon: Tags },
-  // { title: "Orders", url: "/orders", icon: ShoppingCart },
-  // { title: "Customers", url: "/customers", icon: Users },
-  // { title: "Users & Roles", url: "/users", icon: UserCog },
   { title: "Locations", url: "/locations", icon: MapPin },
   { title: "Commercial Signups", url: "/commercial-signups", icon: Building2 },
   { title: "Distributors", url: "/distributors", icon: Truck },
-  // { title: "Audit Logs", url: "/audit", icon: ScrollText },
+  { title: "Distributor Products", url: "/distributor-products", icon: Package },
+  { title: "Order Management", url: "/orders", icon: ShoppingCart },
 ];
 
 export function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
+
   const isActive = (path: string) =>
     path === "/" ? pathname === "/" : pathname.startsWith(path);
 
@@ -56,6 +48,7 @@ export function AdminSidebar() {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
             <Sparkles className="h-5 w-5" />
           </div>
+
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-sidebar-foreground">
@@ -68,9 +61,11 @@ export function AdminSidebar() {
           )}
         </div>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
+
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -87,13 +82,6 @@ export function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      {/* <SidebarFooter className="border-t border-sidebar-border">
-        {!collapsed && (
-          <div className="px-2 py-2 text-xs text-sidebar-foreground/60">
-            v1.0 · MVP build
-          </div>
-        )}
-      </SidebarFooter> */}
     </Sidebar>
   );
 }

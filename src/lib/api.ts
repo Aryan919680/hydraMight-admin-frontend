@@ -364,6 +364,162 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
   return data;
 }
 
+export type DistributorMoqPricing = {
+  id?: string;
+  moq_quantity: number;
+  cost_price: number;
+  selling_price: number;
+  status?: "active" | "inactive" | string;
+};
+
+export type UnmappedSku = {
+  main_inventory_id: string;
+  sku: string;
+  item_name?: string | null;
+  total_stock?: number | string;
+  reserved_stock?: number | string;
+  available_stock?: number | string;
+  product_id?: string | null;
+  product_link_status?: string | null;
+};
+
+export type DistributorProduct = {
+  product_id: string;
+  product_name: string;
+  sku: string;
+  slug?: string | null;
+
+  category_id?: string | null;
+  category_name?: string | null;
+  brand?: string | null;
+  short_description?: string | null;
+  description?: string | null;
+
+  quantity_value?: number | string | null;
+  quantity_unit?: string | null;
+  unit?: string | null;
+  mrp?: number | string | null;
+  currency?: string | null;
+
+  product_active?: boolean;
+  inventory_link_status?: string | null;
+
+  main_inventory_id?: string | null;
+  inventory_item_name?: string | null;
+  main_total_stock?: number | string | null;
+  main_reserved_stock?: number | string | null;
+  main_available_stock?: number | string | null;
+
+  distributor_allocated_stock?: number | string | null;
+  distributor_reserved_stock?: number | string | null;
+  distributor_available_stock?: number | string | null;
+
+  moq_pricing: DistributorMoqPricing[];
+};
+
+export type CreateDistributorProductPayload = {
+  category_id: string;
+  name: string;
+  sku: string;
+  short_description?: string | null;
+  description?: string | null;
+  brand?: string | null;
+  quantity_value?: number;
+  quantity_unit?: string;
+  unit?: string;
+  mrp?: number;
+  currency?: string;
+  moq_pricing: DistributorMoqPricing[];
+};
+
+export type AdminOrder = {
+  id: string;
+  order_id?: string;
+  order_number?: string | null;
+
+  portal_type:
+    | "household"
+    | "commercial"
+    | "distributor"
+    | "whitelabel"
+    | string;
+
+  source_type?: string | null;
+
+  customer_id?: string | null;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+
+  business_name?: string | null;
+  contact_person?: string | null;
+  gst_number?: string | null;
+
+  location_name?: string | null;
+  service_location_id?: string | null;
+
+  order_status?: string | null;
+  payment_status?: string | null;
+  delivery_status?: string | null;
+
+  subtotal?: number | string | null;
+  discount_amount?: number | string | null;
+  tax_amount?: number | string | null;
+  delivery_charge?: number | string | null;
+  total_amount?: number | string | null;
+
+  item_count?: number | null;
+  delivery_address?: unknown;
+  remarks?: string | null;
+
+  placed_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+
+  [key: string]: unknown;
+};
+
+export type AdminOrderSummary = {
+  total_orders?: number;
+  household_orders?: number;
+  commercial_orders?: number;
+  distributor_orders?: number;
+  whitelabel_orders?: number;
+  pending_approval?: number;
+  processing_orders?: number;
+  delivered_orders?: number;
+  closed_problem_orders?: number;
+  today_revenue?: number;
+  total_revenue?: number;
+};
+
+export type AdminOrderEvent = {
+  id?: string;
+  event_type: string;
+  previous_value?: string | null;
+  new_value?: string | null;
+  note?: string | null;
+  created_at?: string | null;
+  created_by_name?: string | null;
+  created_by_email?: string | null;
+  system_event?: boolean;
+};
+
+export type AdminOrderDetail = AdminOrder & {
+  items?: Array<{
+    id?: string;
+    product_name?: string;
+    sku?: string;
+    quantity?: number;
+    qty?: number;
+    unit_price?: number;
+    selling_price?: number;
+    price?: number;
+    total_amount?: number;
+    line_total?: number;
+    [key: string]: unknown;
+  }>;
+};
 export const api = {
   login: (email: string, password: string) =>
     request<never>('/auth/login', {
@@ -784,6 +940,178 @@ rejectAgencyRequest: (requestId: string, payload: { rejection_reason?: string })
     method: "POST",
     body: JSON.stringify(payload || {}),
   }),
+getUnmappedDistributorSkus: (params?: {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}) => {
+  const query = new URLSearchParams();
+
+  if (params?.search) query.set("search", params.search);
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.offset) query.set("offset", String(params.offset));
+
+  const queryString = query.toString();
+
+  return request<UnmappedSku[]>(
+    `/admin/distributor-products/unmapped-skus${
+      queryString ? `?${queryString}` : ""
+    }`
+  );
+},
+
+getDistributorProducts: (params?: {
+  search?: string;
+  status?: "active" | "inactive" | "all";
+  limit?: number;
+  offset?: number;
+}) => {
+  const query = new URLSearchParams();
+
+  if (params?.search) query.set("search", params.search);
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.offset) query.set("offset", String(params.offset));
+
+  const queryString = query.toString();
+
+  return request<DistributorProduct[]>(
+    `/admin/distributor-products${queryString ? `?${queryString}` : ""}`
+  );
+},
+
+createDistributorProduct: (payload: CreateDistributorProductPayload) =>
+  request<DistributorProduct>("/admin/distributor-products", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }),
+
+getDistributorProductById: (productId: string) =>
+  request<DistributorProduct>(`/admin/distributor-products/${productId}`),
+
+updateDistributorProductMoqPricing: (
+  productId: string,
+  payload: {
+    moq_pricing: DistributorMoqPricing[];
+  }
+) =>
+  request<{
+    product: DistributorProduct;
+    moq_pricing: DistributorMoqPricing[];
+  }>(`/admin/distributor-products/${productId}/moq-pricing`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  }),
+
+getAdminOrders: (params?: {
+  portal_type?: string;
+  status?: string;
+  payment_status?: string;
+  delivery_status?: string;
+  search?: string;
+  from_date?: string;
+  to_date?: string;
+  limit?: number;
+  offset?: number;
+}) => {
+  const query = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+
+  const queryString = query.toString();
+
+  return request<AdminOrder[]>(
+    `/admin/orders${queryString ? `?${queryString}` : ""}`
+  );
+},
+
+getAdminOrderSummary: () => {
+  return request<AdminOrderSummary>("/admin/orders/summary");
+},
+
+getAdminOrderDetail: (portalType: string, orderId: string) => {
+  return request<AdminOrderDetail>(
+    `/admin/orders/${portalType}/${orderId}`
+  );
+},
+
+updateAdminOrderStatus: (
+  portalType: string,
+  orderId: string,
+  status: string,
+  note?: string
+) => {
+  return request<AdminOrder>(
+    `/admin/orders/${portalType}/${orderId}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        status,
+        note,
+      }),
+    }
+  );
+},
+
+updateAdminOrderPaymentStatus: (
+  portalType: string,
+  orderId: string,
+  payment_status: string,
+  note?: string
+) => {
+  return request<AdminOrder>(
+    `/admin/orders/${portalType}/${orderId}/payment-status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        payment_status,
+        note,
+      }),
+    }
+  );
+},
+
+updateAdminOrderDeliveryStatus: (
+  portalType: string,
+  orderId: string,
+  delivery_status: string,
+  note?: string
+) => {
+  return request<AdminOrder>(
+    `/admin/orders/${portalType}/${orderId}/delivery-status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        delivery_status,
+        note,
+      }),
+    }
+  );
+},
+
+addAdminOrderNote: (
+  portalType: string,
+  orderId: string,
+  note: string
+) => {
+  return request<{ success: boolean }>(
+    `/admin/orders/${portalType}/${orderId}/notes`,
+    {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    }
+  );
+},
+
+getAdminOrderTimeline: (portalType: string, orderId: string) => {
+  return request<AdminOrderEvent[]>(
+    `/admin/orders/${portalType}/${orderId}/timeline`
+  );
+},
 };
 
 export type CommercialSignup = {
