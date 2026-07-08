@@ -233,7 +233,7 @@ export default function Distributors() {
     setSaving(true);
     try {
       const payload = selectedStockistId ? { stockist_id: selectedStockistId } : {};
-      const res = await api.approveAgencyRequest(approveRequest.id, payload);
+      const res: any = await api.approveAgencyRequest(approveRequest.id, payload);
       const login = res?.data?.login;
 
       toast({
