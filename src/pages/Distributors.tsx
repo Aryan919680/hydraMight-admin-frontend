@@ -14,12 +14,11 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Loader2, Plus, Eye, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 
-type Tab = "stockists" | "agencyRequests" | "agencies";
+export type DistributorView = "stockists" | "agencyRequests" | "agencies";
 
 type Status = "active" | "inactive" | "blocked" | "pending" | "approved" | "rejected" | string;
 
@@ -120,8 +119,8 @@ const emptyStockist: CreateStockistPayload = {
   pincode: "",
 };
 
-export default function Distributors() {
-  const [tab, setTab] = useState<Tab>("stockists");
+export default function Distributors({ view = "stockists" }: { view?: DistributorView }) {
+  const tab = view;
   const [stockists, setStockists] = useState<Stockist[]>([]);
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [agencyRequests, setAgencyRequests] = useState<AgencyRequest[]>([]);
@@ -185,8 +184,8 @@ export default function Distributors() {
   };
 
   useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, []);
-  useEffect(() => { if (tab === "agencies") loadAgencies(); /* eslint-disable-next-line */ }, [stockistFilter]);
-  useEffect(() => { if (tab === "agencyRequests") loadAgencyRequests(); /* eslint-disable-next-line */ }, [requestStatus]);
+  useEffect(() => { if (tab === "agencies") loadAgencies(); /* eslint-disable-next-line */ }, [stockistFilter, tab]);
+  useEffect(() => { if (tab === "agencyRequests") loadAgencyRequests(); /* eslint-disable-next-line */ }, [requestStatus, tab]);
 
   const submitStockist = async () => {
     if (!stockistForm.territory.trim()) {
@@ -310,23 +309,20 @@ export default function Distributors() {
     ]);
   });
 
+  const titles: Record<DistributorView, { title: string; description: string }> = {
+    stockists: { title: "Stockists", description: "Onboard and manage stockists across territories." },
+    agencies: { title: "Agencies", description: "Approved agencies operating under stockists." },
+    agencyRequests: { title: "Agency Requests", description: "Referral-based agency signup approvals." },
+  };
+
   return (
     <div>
-      <PageHeader
-        title="Distributors"
-        description="Manage stockists, referral-based agency requests, and approved agencies."
-      />
+      <PageHeader title={titles[tab].title} description={titles[tab].description} />
 
       <Card>
         <CardContent className="p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-              <TabsList>
-                <TabsTrigger value="stockists">Stockists</TabsTrigger>
-                <TabsTrigger value="agencyRequests">Agency Requests</TabsTrigger>
-                <TabsTrigger value="agencies">Agencies</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div />
 
             <div className="flex flex-wrap items-center gap-2">
               {tab === "agencies" && (

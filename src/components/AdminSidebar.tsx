@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Package,
@@ -32,6 +33,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import { api } from "@/lib/api";
 
 type BadgeTone = "danger" | "success" | "info" | "muted";
 
@@ -52,7 +54,15 @@ type NavItem = {
 
 type NavSection = { label: string; items: NavItem[] };
 
-const sections: NavSection[] = [
+function buildSections(counts: {
+  orders: number | null;
+  agencyRequests: number | null;
+  commercialSignups: number | null;
+}): NavSection[] {
+  const toBadge = (n: number | null, tone: BadgeTone) =>
+    n && n > 0 ? { label: String(n), tone } : undefined;
+
+  return [
   {
     label: "Operations",
     items: [
@@ -61,7 +71,7 @@ const sections: NavSection[] = [
         title: "Orders",
         url: "/orders",
         icon: ShoppingCart,
-        badge: { label: "14", tone: "danger" },
+        badge: toBadge(counts.orders, "danger"),
       },
     ],
   },
@@ -123,15 +133,15 @@ const sections: NavSection[] = [
     items: [
       {
         title: "Distributors",
-        url: "/distributors",
+        url: "/distributors/stockists",
         icon: Truck,
         children: [
-          { title: "Stockists", url: "/distributors" },
-          { title: "Agencies", url: "/distributors?tab=agencies" },
+          { title: "Stockists", url: "/distributors/stockists" },
+          { title: "Agencies", url: "/distributors/agencies" },
           {
             title: "Agency requests",
-            url: "/distributors?tab=requests",
-            badge: { label: "2", tone: "danger" },
+            url: "/distributors/agency-requests",
+            badge: toBadge(counts.agencyRequests, "danger"),
           },
         ],
       },
@@ -139,11 +149,12 @@ const sections: NavSection[] = [
         title: "Commercial signups",
         url: "/commercial-signups",
         icon: Building2,
-        badge: { label: "3", tone: "success" },
+        badge: toBadge(counts.commercialSignups, "success"),
       },
     ],
   },
-];
+  ];
+}
 
 function NavBadge({
   label,
@@ -175,10 +186,59 @@ export function AdminSidebar() {
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
 
+  const [counts, setCounts] = useState<{
+    orders: number | null;
+    agencyRequests: number | null;
+    commercialSignups: number | null;
+  }>({ orders: null, agencyRequests: null, commercialSignups: null });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCounts = async () => {
+      const [ordersRes, agencyRes, signupsRes] = await Promise.allSettled([
+        api.getAdminOrderSummary(),
+        api.getAgencyRequests({ status: "pending" }),
+        api.getCommercialSignups("pending"),
+      ]);
+
+      if (cancelled) return;
+
+      const orderData: any =
+        ordersRes.status === "fulfilled" ? ordersRes.value?.data : null;
+      const orders =
+        orderData?.pending_approval ??
+        orderData?.processing_orders ??
+        orderData?.total_orders ??
+        null;
+
+      const agencyData: any =
+        agencyRes.status === "fulfilled" ? agencyRes.value?.data : null;
+      const agencyRequests = Array.isArray(agencyData) ? agencyData.length : null;
+
+      const signupsData: any =
+        signupsRes.status === "fulfilled" ? signupsRes.value?.data : null;
+      const commercialSignups = Array.isArray(signupsData) ? signupsData.length : null;
+
+      setCounts({
+        orders: typeof orders === "number" ? orders : null,
+        agencyRequests,
+        commercialSignups,
+      });
+    };
+
+    loadCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  const sections = buildSections(counts);
+
   const isActive = (path: string) => {
     const clean = path.split("?")[0];
     if (clean === "/") return pathname === "/";
-    return pathname === clean;
+    return pathname === clean || pathname.startsWith(clean + "/");
   };
 
   const isParentActive = (item: NavItem) => {
