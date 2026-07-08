@@ -17,6 +17,7 @@ import Locations from "./pages/Locations";
 import AuditLogs from "./pages/AuditLogs";
 import CommercialSignups from "./pages/CommercialSignups";
 import Distributors from "./pages/Distributors";
+import { Navigate } from "react-router-dom";
 import DistributorProducts from "./pages/DistributorProducts";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -44,7 +45,10 @@ const App = () => (
               <Route path="/users" element={<UsersAndRoles />} />
               <Route path="/locations" element={<Locations />} />
               <Route path="/commercial-signups" element={<CommercialSignups />} />
-              <Route path="/distributors" element={<Distributors />} />
+              <Route path="/distributors" element={<Navigate to="/distributors/stockists" replace />} />
+              <Route path="/distributors/stockists" element={<Distributors view="stockists" />} />
+              <Route path="/distributors/agencies" element={<Distributors view="agencies" />} />
+              <Route path="/distributors/agency-requests" element={<Distributors view="agencyRequests" />} />
               <Route path="/distributor-products" element={<DistributorProducts />} />
               <Route path="/audit" element={<AuditLogs />} />
             </Route>
