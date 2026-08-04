@@ -626,6 +626,12 @@ uploadProductImage: async (file: File) => {
   );
 },
 
+
+checkMainInventorySku: (sku: string) =>
+  request<{ success: boolean; exists: boolean; data: MainInventoryItem | null }>(
+    `/admin/main-inventory/check-sku/${encodeURIComponent(sku)}`
+  ),
+
 getMainInventoryById: (id: string) =>
   request<{ success: boolean; data: MainInventoryItem }>(
     `/admin/main-inventory/${id}`
@@ -670,14 +676,14 @@ linkMainInventoryProducts: () =>
     }
   ),
 
-bulkUploadMainInventory: async (file: File) => {
+bulkUploadMainInventory: async (file: File, validateOnly = false) => {
   const token = localStorage.getItem("admin_token");
 
   const formData = new FormData();
   formData.append("file", file);
 
   const response = await fetch(
-    `${API_BASE_URL}/admin/main-inventory/bulk-upload`,
+    `${API_BASE_URL}/admin/main-inventory/bulk-upload?validate_only=${validateOnly}`,
     {
       method: "POST",
       headers: {

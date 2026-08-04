@@ -485,7 +485,6 @@ const [uploadingImage, setUploadingImage] = useState(false);
     <div>
       <PageHeader
         title="Product CMS"
-        description="Manage selling products by channel. Ecom is active now; White Label and Distribution will be added later."
         actions={
           <Dialog
             open={productDialogOpen}
@@ -523,11 +522,6 @@ const [uploadingImage, setUploadingImage] = useState(false);
       />
 
       <Tabs defaultValue="ecom">
-        <TabsList>
-          <TabsTrigger value="ecom">Ecom</TabsTrigger>
-          <TabsTrigger value="white_label">White Label</TabsTrigger>
-          <TabsTrigger value="distribution">Distribution</TabsTrigger>
-        </TabsList>
 
         <TabsContent value="ecom" className="mt-4">
           <Card>
@@ -677,20 +671,6 @@ const [uploadingImage, setUploadingImage] = useState(false);
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="white_label" className="mt-4">
-          <EmptyChannelCard
-            title="White Label Products"
-            description="White label product management will be implemented later."
-          />
-        </TabsContent>
-
-        <TabsContent value="distribution" className="mt-4">
-          <EmptyChannelCard
-            title="Distribution Products"
-            description="Distribution product management will be implemented later."
-          />
         </TabsContent>
       </Tabs>
     </div>

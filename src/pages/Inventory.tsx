@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { MainInventoryWizard } from "@/components/MainInventoryWizard";
 import {
   Card,
   CardContent,
@@ -941,120 +942,6 @@ const saveMainInventory = async () => {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              <div className="rounded-lg border bg-muted/20 p-4">
-  <div className="mb-3">
-    <p className="text-sm font-medium">Bulk Upload Main Inventory</p>
-    <p className="text-xs text-muted-foreground">
-      Upload central SKU stock. Product can be linked later by same SKU.
-    </p>
-  </div>
-
-  <div className="mb-3 rounded-md border bg-background p-3">
-    <p className="mb-1 text-xs font-medium">CSV columns</p>
-    <code className="text-xs text-muted-foreground">
-      sku, item_name, total_stock, reserved_stock, min_stock_level, remarks
-    </code>
-  </div>
-
-  <div className="flex flex-col gap-3 md:flex-row md:items-center">
-    <Input
-      type="file"
-      accept=".csv,text/csv"
-      onChange={(e) =>
-        setBulkMainInventoryFile(e.target.files?.[0] || null)
-      }
-    />
-
-    <Button
-      type="button"
-      variant="outline"
-      onClick={downloadMainInventorySample}
-    >
-      <Download className="mr-2 h-4 w-4" />
-      Sample CSV
-    </Button>
-
-    <Button
-      type="button"
-      onClick={uploadMainInventory}
-      disabled={uploadingMainInventory}
-    >
-      {uploadingMainInventory ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : (
-        <Upload className="mr-2 h-4 w-4" />
-      )}
-      Upload Main Inventory
-    </Button>
-  </div>
-
-  {bulkMainInventoryResult && (
-    <div className="mt-4 rounded-lg border bg-background p-4">
-      <div className="mb-3 grid gap-3 md:grid-cols-3">
-        <div>
-          <p className="text-xs text-muted-foreground">Total Rows</p>
-          <p className="text-lg font-semibold">
-            {bulkMainInventoryResult.total_rows || 0}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted-foreground">Processed</p>
-          <p className="text-lg font-semibold text-success">
-            {bulkMainInventoryResult.processed || 0}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted-foreground">Failed</p>
-          <p className="text-lg font-semibold text-destructive">
-            {bulkMainInventoryResult.failed || 0}
-          </p>
-        </div>
-      </div>
-
-      {Array.isArray(bulkMainInventoryResult.results) &&
-        bulkMainInventoryResult.results.length > 0 && (
-          <div className="max-h-72 overflow-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Row</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Message</TableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {bulkMainInventoryResult.results.map((row: any) => (
-                  <TableRow key={row.row}>
-                    <TableCell>{row.row}</TableCell>
-
-                    <TableCell className="font-mono text-xs">
-                      {row.sku || "-"}
-                    </TableCell>
-
-                    <TableCell>
-                      <Badge
-                        variant={row.success ? "default" : "destructive"}
-                      >
-                        {row.success ? "Success" : "Failed"}
-                      </Badge>
-                    </TableCell>
-
-                    <TableCell className="text-xs text-muted-foreground">
-                      {row.message || "Processed"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-    </div>
-  )}
-</div>
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1866,137 +1753,17 @@ const saveMainInventory = async () => {
           )}
         </DialogContent>
       </Dialog>
-      <Dialog
-  open={mainInventoryDialogOpen}
-  onOpenChange={setMainInventoryDialogOpen}
->
-  <DialogContent className="max-w-xl">
-    <DialogHeader>
-      <DialogTitle>
-        {selectedMainInventory ? "Update Main Inventory" : "Add Main Inventory"}
-      </DialogTitle>
-
-      <DialogDescription>
-        Main inventory is SKU-based central stock. Product can be linked later by same SKU.
-      </DialogDescription>
-    </DialogHeader>
-
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="space-y-2">
-        <Label>SKU *</Label>
-        <Input
-          value={mainInventoryForm.sku}
-          disabled={Boolean(selectedMainInventory)}
-          onChange={(e) =>
-            setMainInventoryForm((prev) => ({
-              ...prev,
-              sku: e.target.value.toUpperCase(),
-            }))
-          }
-          placeholder="PRO-001"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Item name</Label>
-        <Input
-          value={mainInventoryForm.item_name}
-          onChange={(e) =>
-            setMainInventoryForm((prev) => ({
-              ...prev,
-              item_name: e.target.value,
-            }))
-          }
-          placeholder="Floor Cleaner 500ml"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Total stock *</Label>
-        <Input
-          type="number"
-          value={mainInventoryForm.total_stock}
-          onChange={(e) =>
-            setMainInventoryForm((prev) => ({
-              ...prev,
-              total_stock: e.target.value,
-            }))
-          }
-          placeholder="1000"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Reserved stock</Label>
-        <Input
-          type="number"
-          value={mainInventoryForm.reserved_stock}
-          onChange={(e) =>
-            setMainInventoryForm((prev) => ({
-              ...prev,
-              reserved_stock: e.target.value,
-            }))
-          }
-          placeholder="0"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Minimum stock</Label>
-        <Input
-          type="number"
-          value={mainInventoryForm.min_stock_level}
-          onChange={(e) =>
-            setMainInventoryForm((prev) => ({
-              ...prev,
-              min_stock_level: e.target.value,
-            }))
-          }
-          placeholder="20"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Remarks</Label>
-        <Input
-          value={mainInventoryForm.remarks}
-          onChange={(e) =>
-            setMainInventoryForm((prev) => ({
-              ...prev,
-              remarks: e.target.value,
-            }))
-          }
-          placeholder="Opening stock"
-        />
-      </div>
-    </div>
-
-    {selectedMainInventory && (
-      <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-        <div>
-          <span className="font-medium text-foreground">Allocated:</span>{" "}
-          {selectedMainInventory.allocated_stock}
-        </div>
-        <div>
-          <span className="font-medium text-foreground">Available:</span>{" "}
-          {selectedMainInventory.available_stock}
-        </div>
-        <div className="mt-1">
-          Allocated stock is controlled by sub-inventory allocation and cannot be edited here.
-        </div>
-      </div>
-    )}
-
-    <DialogFooter>
-      <Button onClick={saveMainInventory} disabled={savingMainInventory}>
-        {savingMainInventory && (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        )}
-        {selectedMainInventory ? "Update Inventory" : "Create Inventory"}
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+      <MainInventoryWizard
+        open={mainInventoryDialogOpen}
+        item={selectedMainInventory}
+        onOpenChange={setMainInventoryDialogOpen}
+        onSaved={loadMainInventory}
+        onAllocate={(inventory) => {
+          setForm((previous) => ({ ...previous, sku: inventory.sku }));
+          setSelectedAllocation(null);
+          setAllocationDialogOpen(true);
+        }}
+      />
     </div>
   );
 }
