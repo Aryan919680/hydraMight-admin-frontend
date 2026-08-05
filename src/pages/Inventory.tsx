@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { MainInventoryWizard } from "@/components/MainInventoryWizard";
+import { StockAllocationWizard } from "@/components/StockAllocationWizard";
 import {
   Card,
   CardContent,
@@ -23,11 +24,9 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -62,50 +61,6 @@ import {
 } from "@/lib/api";
 
 const ALL = "all";
-const NONE = "__none__";
-
-type AllocationForm = {
-  sku: string;
-  channel: string;
-  sub_channel: string;
-
-  service_location_id: string;
-
-  location_id: string;
-  location_code: string;
-  location_name: string;
-  city: string;
-  state: string;
-  pincode: string;
-  location_type: string;
-
-  allocated_stock: string;
-  reserved_stock: string;
-  min_stock_level: string;
-  remarks: string;
-};
-
-const blankAllocationForm: AllocationForm = {
-  sku: "",
-  channel: "ecom",
-  sub_channel: "household",
-
-  service_location_id: "",
-
-  location_id: "",
-  location_code: "",
-  location_name: "",
-  city: "",
-  state: "",
-  pincode: "",
-  location_type: "service_area",
-
-  allocated_stock: "",
-  reserved_stock: "0",
-  min_stock_level: "0",
-  remarks: "",
-};
-
 type MainInventoryForm = {
   sku: string;
   item_name: string;
@@ -137,7 +92,6 @@ export default function Inventory() {
 
   const [loadingMain, setLoadingMain] = useState(false);
   const [loadingAllocations, setLoadingAllocations] = useState(false);
-  const [savingAllocation, setSavingAllocation] = useState(false);
   const [uploadingAllocation, setUploadingAllocation] = useState(false);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
 
@@ -149,11 +103,12 @@ export default function Inventory() {
 
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("main");
+  const [allocationSeed, setAllocationSeed] =
+    useState<MainInventoryItem | null>(null);
 
   const [selectedAllocation, setSelectedAllocation] =
     useState<InventoryAllocation | null>(null);
-
-  const [form, setForm] = useState<AllocationForm>(blankAllocationForm);
 
   const [bulkAllocationFile, setBulkAllocationFile] = useState<File | null>(
     null
@@ -175,10 +130,6 @@ const [bulkMainInventoryResult, setBulkMainInventoryResult] =
   useState<any | null>(null);
 
 const [uploadingMainInventory, setUploadingMainInventory] = useState(false);
-  const selectedChannel = channels.find((c) => c.code === form.channel);
-  const currentSubChannels = subChannels.filter(
-    (s) => s.channel_code === form.channel
-  );
 
   const loadMainInventory = async () => {
     try {
@@ -299,269 +250,16 @@ const loadMasterData = async () => {
     };
   }, [allocations]);
 
-  const openCreateAllocation = () => {
+  const openCreateAllocation = (inventory?: MainInventoryItem | null) => {
     setSelectedAllocation(null);
-    setForm(blankAllocationForm);
+    setAllocationSeed(inventory || null);
     setAllocationDialogOpen(true);
   };
 
   const openEditAllocation = (item: InventoryAllocation) => {
     setSelectedAllocation(item);
-
-setForm({
-  sku: item.sku,
-  channel: item.channel_code,
-  sub_channel: item.sub_channel_code || NONE,
-
-  service_location_id: item.service_location_id || "",
-
-  location_id: item.location_id,
-  location_code: item.location_code || "",
-  location_name:
-    item.service_location_name || item.location_name || "",
-  city:
-    item.service_location_city || item.city || "",
-  state:
-    item.service_location_state || item.state || "",
-  pincode:
-    item.service_location_pincode || item.pincode || "",
-  location_type: item.location_type || "service_area",
-
-  allocated_stock: String(item.allocated_stock ?? 0),
-  reserved_stock: String(item.reserved_stock ?? 0),
-  min_stock_level: String(item.min_stock_level ?? 0),
-  remarks: item.remarks || "",
-});
-
+    setAllocationSeed(null);
     setAllocationDialogOpen(true);
-  };
-
-const onChannelChange = (channel: string) => {
-  setForm((prev) => ({
-    ...prev,
-    channel,
-    sub_channel: channel === "ecom" ? "household" : NONE,
-
-    service_location_id: "",
-
-    location_id: "",
-    location_code: "",
-    location_name: "",
-    city: "",
-    state: "",
-    pincode: "",
-
-    location_type:
-      channel === "distribution"
-        ? "distributor"
-        : channel === "white_label"
-          ? "partner"
-          : "service_area",
-  }));
-};
-
-
-
-const onServiceLocationSelect = (serviceLocationId: string) => {
-  const location = serviceLocations.find((l) => l.id === serviceLocationId);
-
-  if (!location) return;
-
-  setForm((prev) => ({
-    ...prev,
-    service_location_id: location.id,
-
-    location_code: location.code || location.pincode || location.id,
-    location_name: location.name,
-    city: location.city || "",
-    state: location.state || "",
-    pincode: location.pincode || "",
-    location_type: "service_area",
-  }));
-};
-
-  const onLocationSelect = (locationId: string) => {
-    if (locationId === NONE) {
-      setForm((prev) => ({
-        ...prev,
-        location_id: "",
-        location_code: "",
-        location_name: "",
-        city: "",
-        state: "",
-        pincode: "",
-      }));
-      return;
-    }
-
-    const location = locations.find((l) => l.id === locationId);
-
-    if (!location) return;
-
-    setForm((prev) => ({
-      ...prev,
-      location_id: location.id,
-      location_code: location.code,
-      location_name: location.name,
-      city: location.city || "",
-      state: location.state || "",
-      pincode: location.pincode || "",
-      location_type: location.location_type || prev.location_type,
-    }));
-  };
-
-  const validateAllocationForm = () => {
-    if (!form.sku.trim()) {
-      toast({
-        title: "SKU required",
-        description: "Please enter SKU.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (!form.channel) {
-      toast({
-        title: "Channel required",
-        description: "Please select channel.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (form.channel === "ecom" && (!form.sub_channel || form.sub_channel === NONE)) {
-      toast({
-        title: "Sub-channel required",
-        description: "Household or commercial is required for ecom.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-if (form.channel === "ecom") {
-  if (!form.service_location_id) {
-    toast({
-      title: "Service location required",
-      description: "Please select a service location for ecom inventory.",
-      variant: "destructive",
-    });
-    return false;
-  }
-} else {
-  if (!form.location_code.trim() || !form.location_name.trim()) {
-    toast({
-      title: "Location required",
-      description: "Please enter location code and name.",
-      variant: "destructive",
-    });
-    return false;
-  }
-}
-
-    if (form.allocated_stock === "") {
-      toast({
-        title: "Allocated stock required",
-        description: "Please enter allocated stock.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    const allocated = Number(form.allocated_stock || 0);
-    const reserved = Number(form.reserved_stock || 0);
-    const min = Number(form.min_stock_level || 0);
-
-    if (allocated < 0 || reserved < 0 || min < 0) {
-      toast({
-        title: "Invalid stock",
-        description: "Stock values cannot be negative.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (reserved > allocated) {
-      toast({
-        title: "Invalid reserved stock",
-        description: "Reserved stock cannot be greater than allocated stock.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const saveAllocation = async () => {
-    try {
-      if (!validateAllocationForm()) return;
-
-      setSavingAllocation(true);
-
-      if (selectedAllocation) {
-        await api.updateInventoryAllocation(selectedAllocation.id, {
-          allocated_stock: Number(form.allocated_stock || 0),
-          reserved_stock: Number(form.reserved_stock || 0),
-          min_stock_level: Number(form.min_stock_level || 0),
-          remarks: form.remarks || undefined,
-        });
-
-        toast({
-          title: "Sub inventory updated",
-          description: "Allocation updated and main inventory synced.",
-        });
-      } else {
-await api.createInventoryAllocation({
-  sku: form.sku.trim(),
-  channel: form.channel,
-
-  sub_channel:
-    form.channel === "ecom" && form.sub_channel !== NONE
-      ? form.sub_channel
-      : undefined,
-
-  service_location_id:
-    form.channel === "ecom" ? form.service_location_id : undefined,
-
-  location_code:
-    form.channel !== "ecom" ? form.location_code.trim() : undefined,
-
-  location_name:
-    form.channel !== "ecom" ? form.location_name.trim() : undefined,
-
-  city: form.channel !== "ecom" ? form.city || undefined : undefined,
-  state: form.channel !== "ecom" ? form.state || undefined : undefined,
-  pincode: form.channel !== "ecom" ? form.pincode || undefined : undefined,
-
-  location_type: form.location_type || undefined,
-
-  allocated_stock: Number(form.allocated_stock || 0),
-  reserved_stock: Number(form.reserved_stock || 0),
-  min_stock_level: Number(form.min_stock_level || 0),
-  remarks: form.remarks || undefined,
-});
-
-        toast({
-          title: "Sub inventory allocated",
-          description: "Stock allocated from main inventory.",
-        });
-      }
-
-      setAllocationDialogOpen(false);
-      setSelectedAllocation(null);
-      setForm(blankAllocationForm);
-
-      await Promise.all([loadMainInventory(), loadAllocations(), loadMasterData()]);
-    } catch (error) {
-      toast({
-        title: "Save failed",
-        description:
-          error instanceof Error ? error.message : "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingAllocation(false);
-    }
   };
 
   const deleteAllocation = async (item: InventoryAllocation) => {
@@ -724,14 +422,6 @@ const downloadMainInventorySample = () => {
 
   URL.revokeObjectURL(url);
 };
-
-  const filteredLocationsForForm = locations.filter((location) => {
-    if (location.channel_code !== form.channel) return false;
-    if (form.channel === "ecom") {
-      return location.sub_channel_code === form.sub_channel;
-    }
-    return true;
-  });
 
   const filteredLocationsForFilter = locations.filter((location) => {
     if (filterChannel !== ALL && location.channel_code !== filterChannel) {
@@ -925,7 +615,7 @@ const saveMainInventory = async () => {
         <StatCard title="Main Low" value={mainStats.low} warning />
       </div>
 
-      <Tabs defaultValue="main">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="main">Main Inventory</TabsTrigger>
           <TabsTrigger value="allocation">Channel Allocation</TabsTrigger>
@@ -1381,316 +1071,31 @@ const saveMainInventory = async () => {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={allocationDialogOpen} onOpenChange={setAllocationDialogOpen}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedAllocation ? "Update Sub Inventory" : "Allocate Stock"}
-            </DialogTitle>
-            <DialogDescription>
-              Allocate stock from main inventory to a channel, sub-channel and location.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>SKU *</Label>
-              <Input
-                value={form.sku}
-                disabled={Boolean(selectedAllocation)}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    sku: e.target.value.toUpperCase(),
-                  }))
-                }
-                placeholder="HH-FC-500ML"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Channel *</Label>
-              <Select
-                value={form.channel}
-                disabled={Boolean(selectedAllocation)}
-                onValueChange={onChannelChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select channel" />
-                </SelectTrigger>
-                <SelectContent>
-                  {channels.map((channel) => (
-                    <SelectItem key={channel.id} value={channel.code}>
-                      {channel.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {form.channel === "ecom" && (
-              <div className="space-y-2">
-                <Label>Ecom Sub-channel *</Label>
-                <Select
-                  value={form.sub_channel}
-                  disabled={Boolean(selectedAllocation)}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      sub_channel: value,
-                      location_id: "",
-                      location_code: "",
-                      location_name: "",
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select sub-channel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currentSubChannels.map((sub) => (
-                      <SelectItem key={sub.id} value={sub.code}>
-                        {sub.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-  {form.channel === "ecom" ? (
-  <div className="space-y-2 md:col-span-2">
-    <Label>Service Location *</Label>
-
-    <Select
-      value={form.service_location_id}
-      disabled={Boolean(selectedAllocation)}
-      onValueChange={onServiceLocationSelect}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select service location" />
-      </SelectTrigger>
-
-      <SelectContent>
-        {serviceLocations
-          .filter((location) => location.is_active)
-          .map((location) => (
-            <SelectItem key={location.id} value={location.id}>
-              {location.name} - {location.city} ({location.pincode})
-            </SelectItem>
-          ))}
-      </SelectContent>
-    </Select>
-
-    {form.service_location_id && (
-      <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-        <div>
-          <span className="font-medium text-foreground">Location:</span>{" "}
-          {form.location_name}
-        </div>
-        <div>
-          <span className="font-medium text-foreground">City:</span>{" "}
-          {form.city || "-"}
-        </div>
-        <div>
-          <span className="font-medium text-foreground">Pincode:</span>{" "}
-          {form.pincode || "-"}
-        </div>
-      </div>
-    )}
-  </div>
-) : (
-  <>
-    <div className="space-y-2">
-      <Label>Existing Location</Label>
-      <Select
-        value={form.location_id || NONE}
-        disabled={Boolean(selectedAllocation)}
-        onValueChange={onLocationSelect}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Select existing location" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={NONE}>Create new / Manual</SelectItem>
-          {filteredLocationsForForm.map((location) => (
-            <SelectItem key={location.id} value={location.id}>
-              {location.name} ({location.code})
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-
-    <div className="space-y-2">
-      <Label>Location Code *</Label>
-      <Input
-        value={form.location_code}
-        disabled={Boolean(selectedAllocation)}
-        onChange={(e) =>
-          setForm((prev) => ({
-            ...prev,
-            location_code: e.target.value,
-          }))
-        }
-        placeholder={
-          form.channel === "distribution"
-            ? "DIST-NORTH-01"
-            : "WL-PARTNER-A"
-        }
+      <StockAllocationWizard
+        open={allocationDialogOpen}
+        allocation={selectedAllocation}
+        initialInventory={allocationSeed}
+        channels={channels}
+        subChannels={subChannels}
+        locations={locations}
+        serviceLocations={serviceLocations}
+        onOpenChange={(open) => {
+          setAllocationDialogOpen(open);
+          if (!open) {
+            setSelectedAllocation(null);
+            setAllocationSeed(null);
+          }
+        }}
+        onSaved={async () => {
+          await Promise.all([
+            loadMainInventory(),
+            loadAllocations(),
+            loadMasterData(),
+          ]);
+        }}
+        onViewAllocations={() => setActiveTab("allocation")}
+        onViewMainInventory={() => setActiveTab("main")}
       />
-    </div>
-
-    <div className="space-y-2">
-      <Label>Location Name *</Label>
-      <Input
-        value={form.location_name}
-        disabled={Boolean(selectedAllocation)}
-        onChange={(e) =>
-          setForm((prev) => ({
-            ...prev,
-            location_name: e.target.value,
-          }))
-        }
-        placeholder={
-          form.channel === "distribution"
-            ? "North Distributor"
-            : "White Label Partner A"
-        }
-      />
-    </div>
-
-    <div className="space-y-2">
-      <Label>City</Label>
-      <Input
-        value={form.city}
-        disabled={Boolean(selectedAllocation)}
-        onChange={(e) =>
-          setForm((prev) => ({ ...prev, city: e.target.value }))
-        }
-        placeholder="Gurgaon"
-      />
-    </div>
-
-    <div className="space-y-2">
-      <Label>State</Label>
-      <Input
-        value={form.state}
-        disabled={Boolean(selectedAllocation)}
-        onChange={(e) =>
-          setForm((prev) => ({ ...prev, state: e.target.value }))
-        }
-        placeholder="Haryana"
-      />
-    </div>
-
-    <div className="space-y-2">
-      <Label>Pincode</Label>
-      <Input
-        value={form.pincode}
-        disabled={Boolean(selectedAllocation)}
-        onChange={(e) =>
-          setForm((prev) => ({ ...prev, pincode: e.target.value }))
-        }
-        placeholder="122001"
-      />
-    </div>
-  </>
-)}
-
-{form.channel !== "ecom" && (
-  <div className="space-y-2">
-    <Label>Location Type</Label>
-    <Select
-      value={form.location_type}
-      disabled={Boolean(selectedAllocation)}
-      onValueChange={(value) =>
-        setForm((prev) => ({ ...prev, location_type: value }))
-      }
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Location type" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="warehouse">Warehouse</SelectItem>
-        <SelectItem value="distributor">Distributor</SelectItem>
-        <SelectItem value="partner">Partner</SelectItem>
-      </SelectContent>
-    </Select>
-  </div>
-)}
-
-
-            <div className="space-y-2">
-              <Label>Allocated Stock *</Label>
-              <Input
-                type="number"
-                value={form.allocated_stock}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    allocated_stock: e.target.value,
-                  }))
-                }
-                placeholder="500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Reserved Stock</Label>
-              <Input
-                type="number"
-                value={form.reserved_stock}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    reserved_stock: e.target.value,
-                  }))
-                }
-                placeholder="0"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Min Stock</Label>
-              <Input
-                type="number"
-                value={form.min_stock_level}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    min_stock_level: e.target.value,
-                  }))
-                }
-                placeholder="50"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Remarks</Label>
-              <Input
-                value={form.remarks}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    remarks: e.target.value,
-                  }))
-                }
-                placeholder="Allocated for Gurgaon"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button onClick={saveAllocation} disabled={savingAllocation}>
-              {savingAllocation && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {selectedAllocation ? "Update Allocation" : "Allocate Stock"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={transactionDialogOpen}
@@ -1759,9 +1164,7 @@ const saveMainInventory = async () => {
         onOpenChange={setMainInventoryDialogOpen}
         onSaved={loadMainInventory}
         onAllocate={(inventory) => {
-          setForm((previous) => ({ ...previous, sku: inventory.sku }));
-          setSelectedAllocation(null);
-          setAllocationDialogOpen(true);
+          openCreateAllocation(inventory);
         }}
       />
     </div>
