@@ -264,23 +264,44 @@ export function StockAllocationWizard({
   useEffect(() => {
     if (!open) {
       initializedKeyRef.current = null;
+      searchRequestRef.current += 1;
+      setStep(1);
+      setQuery("");
+      setSearching(false);
+      setSearchResults([]);
+      setSelectedSku(null);
+      setForm({ ...emptyForm });
+      setErrors({});
+      setSaving(false);
+      setSavedAllocation(null);
       return;
     }
 
-    const key = allocation?.id
-      ? `edit-${allocation.id}`
-      : initialInventory?.id
-        ? `create-${initialInventory.id}`
+    const hasEditableAllocation = Boolean(allocation?.id);
+    const hasInitialInventory = Boolean(
+      initialInventory?.id && initialInventory?.sku
+    );
+
+    const key = hasEditableAllocation
+      ? `edit-${allocation!.id}`
+      : hasInitialInventory
+        ? `create-${initialInventory!.id}`
         : "create-empty";
 
-    if (initializedKeyRef.current === key) return;
+    if (initializedKeyRef.current === key) {
+      return;
+    }
+
     initializedKeyRef.current = key;
+    searchRequestRef.current += 1;
 
     setErrors({});
     setSavedAllocation(null);
     setSearchResults([]);
+    setSearching(false);
+    setSaving(false);
 
-    if (allocation) {
+    if (hasEditableAllocation && allocation) {
       const editableAvailable =
         Number(allocation.main_available_stock || 0) +
         Number(allocation.allocated_stock || 0);
@@ -299,12 +320,13 @@ export function StockAllocationWizard({
         product_link_status: allocation.product_link_status || "pending",
         allocations: [],
       });
+
       setQuery(allocation.sku);
       setForm({
         channel: allocation.channel_code as ChannelCode,
         sub_channel: allocation.sub_channel_code || "",
         service_location_id: allocation.service_location_id || "",
-        location_id: allocation.location_id,
+        location_id: allocation.location_id || "",
         allocated_stock: String(allocation.allocated_stock ?? 0),
         min_stock_level: String(allocation.min_stock_level ?? 0),
         remarks: allocation.remarks || "",
@@ -313,30 +335,36 @@ export function StockAllocationWizard({
       return;
     }
 
-    if (initialInventory) {
+    if (hasInitialInventory && initialInventory) {
       setSelectedSku({
         id: initialInventory.id,
         sku: initialInventory.sku || "",
-        item_name: initialInventory.item_name || initialInventory.product_name || "",
+        item_name:
+          initialInventory.item_name ||
+          initialInventory.product_name ||
+          "",
         total_stock: Number(initialInventory.total_stock || 0),
         reserved_stock: Number(initialInventory.reserved_stock || 0),
         allocated_stock: Number(initialInventory.allocated_stock || 0),
         available_stock: Number(initialInventory.available_stock || 0),
         min_stock_level: Number(initialInventory.min_stock_level || 0),
-        product_link_status: initialInventory.product_link_status || "pending",
+        product_link_status:
+          initialInventory.product_link_status || "pending",
         allocations: [],
       });
+
       setQuery(initialInventory.sku || "");
-      setForm(emptyForm);
+      setForm({ ...emptyForm });
       setStep(2);
       return;
     }
 
+    // Top-level "Allocate Stock" always starts at SKU selection.
+    setStep(1);
     setQuery("");
     setSelectedSku(null);
-    setForm(emptyForm);
-    setStep(1);
-  }, [allocation, initialInventory, open]);
+    setForm({ ...emptyForm });
+  }, [open, allocation?.id, initialInventory?.id, initialInventory?.sku]);
 
   useEffect(() => {
     if (!open || editing || step !== 1) return;
@@ -1034,8 +1062,26 @@ export function StockAllocationWizard({
     </div>
   );
 
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      initializedKeyRef.current = null;
+      searchRequestRef.current += 1;
+      setStep(1);
+      setQuery("");
+      setSearching(false);
+      setSearchResults([]);
+      setSelectedSku(null);
+      setForm({ ...emptyForm });
+      setErrors({});
+      setSaving(false);
+      setSavedAllocation(null);
+    }
+
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-h-[94vh] max-w-6xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
