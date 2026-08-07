@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { MainInventoryWizard } from "@/components/MainInventoryWizard";
 import { StockAllocationWizard } from "@/components/StockAllocationWizard";
+import { ProductInventoryLinking } from "@/components/ProductInventoryLinking";
 import {
   Card,
   CardContent,
@@ -620,6 +621,7 @@ const saveMainInventory = async () => {
           <TabsTrigger value="main">Main Inventory</TabsTrigger>
           <TabsTrigger value="allocation">Channel Allocation</TabsTrigger>
           <TabsTrigger value="bulk">Bulk Sub Inventory</TabsTrigger>
+          <TabsTrigger value="product-linking">Product Linking</TabsTrigger>
         </TabsList>
 
         <TabsContent value="main" className="mt-4">
@@ -1068,6 +1070,10 @@ const saveMainInventory = async () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="product-linking" className="mt-4">
+          <ProductInventoryLinking />
         </TabsContent>
       </Tabs>
 

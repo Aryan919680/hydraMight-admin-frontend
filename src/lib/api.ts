@@ -342,6 +342,43 @@ export type InventorySkuSearchItem = {
   allocations: InventorySkuSearchAllocation[];
 };
 
+
+export type InventoryProductLinkStats = {
+  total_skus: number;
+  auto_linked: number;
+  manually_linked: number;
+  unlinked: number;
+  no_product_exists: number;
+  sku_mismatch: number;
+  linked_today: number;
+};
+
+export type InventoryProductLinkItem = {
+  id: string;
+  sku: string;
+  item_name?: string | null;
+  total_stock: number;
+  available_stock: number;
+  product_id?: string | null;
+  product_name?: string | null;
+  product_sku?: string | null;
+  catalogue?: "ecom" | "distribution" | "white_label" | string | null;
+  link_type?: "auto" | "manual" | null;
+  sku_role?: "Primary" | "Variant" | string | null;
+  unlinked_reason?: "no_product" | "sku_mismatch" | null;
+  linked_at?: string | null;
+};
+
+export type ProductLinkCandidate = {
+  id: string;
+  name: string;
+  sku: string;
+  catalogue?: string | null;
+  inventory_link_status?: string | null;
+  linked_inventory_id?: string | null;
+  sku_match: boolean;
+};
+
 export function getToken() {
   return localStorage.getItem('admin_token');
 }
@@ -703,6 +740,72 @@ linkMainInventoryProducts: () =>
     }
   ),
 
+
+getInventoryProductLinkStats: () =>
+  request<InventoryProductLinkStats>(
+    "/admin/main-inventory/product-links/stats"
+  ),
+
+getInventoryProductLinks: (params?: {
+  status?: "linked" | "unlinked";
+  search?: string;
+  reason?: "no_product" | "sku_mismatch";
+  catalogue?: string;
+  link_type?: "auto" | "manual";
+}) => {
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  if (params?.search) query.set("search", params.search);
+  if (params?.reason) query.set("reason", params.reason);
+  if (params?.catalogue) query.set("catalogue", params.catalogue);
+  if (params?.link_type) query.set("link_type", params.link_type);
+
+  return request<InventoryProductLinkItem[]>(
+    `/admin/main-inventory/product-links${
+      query.toString() ? `?${query.toString()}` : ""
+    }`
+  );
+},
+
+getInventoryProductCandidates: (
+  inventoryId: string,
+  params?: { search?: string; limit?: number }
+) => {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  return request<ProductLinkCandidate[]>(
+    `/admin/main-inventory/${inventoryId}/product-candidates${
+      query.toString() ? `?${query.toString()}` : ""
+    }`
+  );
+},
+
+linkInventoryToProduct: (inventoryId: string, productId: string) =>
+  request<InventoryProductLinkItem>(
+    `/admin/main-inventory/${inventoryId}/link-product`,
+    {
+      method: "POST",
+      body: JSON.stringify({ product_id: productId }),
+    }
+  ),
+
+unlinkInventoryProduct: (inventoryId: string) =>
+  request<InventoryProductLinkItem>(
+    `/admin/main-inventory/${inventoryId}/unlink-product`,
+    { method: "POST" }
+  ),
+
+autoLinkInventoryProducts: () =>
+  request<InventoryProductLinkItem[]>(
+    "/admin/main-inventory/link-products",
+    { method: "POST" }
+  ).then((response) => ({
+    ...response,
+    linked_count: Array.isArray(response.data) ? response.data.length : 0,
+  })),
+
 bulkUploadMainInventory: async (file: File, validateOnly = false) => {
   const token = localStorage.getItem("admin_token");
 
@@ -837,13 +940,29 @@ createInventoryAllocation: (payload: {
 updateInventoryAllocation: (
   id: string,
   payload: {
+    channel?: string;
+    sub_channel?: string;
+
+    service_location_id?: string;
+
+    location_code?: string;
+    location_name?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    location_type?: string;
+
     allocated_stock: number;
     reserved_stock?: number;
     min_stock_level?: number;
     remarks?: string;
   }
 ) =>
-  request<{ success: boolean; data: InventoryAllocation; message: string }>(
+  request<{
+    success: boolean;
+    data: InventoryAllocation;
+    message: string;
+  }>(
     `/admin/inventory-allocations/${id}`,
     {
       method: "PUT",
