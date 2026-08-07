@@ -315,6 +315,33 @@ export type InventoryAllocationTransaction = {
   created_at: string;
 };
 
+export type InventorySkuSearchAllocation = {
+  id: string;
+  channel_code: string;
+  channel_name: string;
+  sub_channel_code?: string | null;
+  sub_channel_name?: string | null;
+  location_id: string;
+  location_name: string;
+  location_code: string;
+  allocated_stock: number;
+  reserved_stock: number;
+  available_stock: number;
+};
+
+export type InventorySkuSearchItem = {
+  id: string;
+  sku: string;
+  item_name?: string | null;
+  total_stock: number;
+  reserved_stock: number;
+  allocated_stock: number;
+  available_stock: number;
+  min_stock_level: number;
+  product_link_status?: "pending" | "linked";
+  allocations: InventorySkuSearchAllocation[];
+};
+
 export function getToken() {
   return localStorage.getItem('admin_token');
 }
@@ -708,6 +735,17 @@ bulkUploadMainInventory: async (file: File, validateOnly = false) => {
     results: any[];
   };
 },
+searchInventorySkus: (search: string, limit = 10) => {
+  const query = new URLSearchParams({
+    search,
+    limit: String(limit),
+  });
+
+  return request<InventorySkuSearchItem[]>(
+    `/admin/inventory-allocations/sku-search?${query.toString()}`
+  );
+},
+
 getInventoryChannels: () =>
   request<InventoryChannel[]>(
     "/admin/inventory-allocations/channels"
@@ -776,8 +814,8 @@ createInventoryAllocation: (payload: {
   sku: string;
   channel: string;
   sub_channel?: string;
-  location_code: string;
-  location_name: string;
+  location_code?: string;
+  location_name?: string;
   city?: string;
   state?: string;
   pincode?: string;
@@ -786,7 +824,7 @@ createInventoryAllocation: (payload: {
   reserved_stock?: number;
   min_stock_level?: number;
   remarks?: string;
-   service_location_id?: string;
+  service_location_id?: string;
 }) =>
   request<{ success: boolean; data: InventoryAllocation; message: string }>(
     "/admin/inventory-allocations",
