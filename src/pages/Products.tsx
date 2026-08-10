@@ -91,6 +91,10 @@ const blankProductForm = {
 };
 
 export default function Products() {
+
+   const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  
   const [locations, setLocations] =
   useState<ServiceLocation[]>([]);
 
