@@ -451,6 +451,29 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* Sales Activity */}
+      <div className="mt-6">
+        <h2 className="mb-3 text-base font-semibold">Sales Activity</h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {salesActivity.map((s) => (
+            <Link key={s.label} to={s.to}>
+              <Card className="h-full transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col items-center justify-center p-6 text-center">
+                  <p className={`text-4xl font-semibold ${s.color}`}>
+                    {s.isMoney ? inr(s.value) : s.value}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{s.unit}</p>
+                  <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground">
+                    <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
+                    {s.label}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Order status bar + sales activity */}
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
