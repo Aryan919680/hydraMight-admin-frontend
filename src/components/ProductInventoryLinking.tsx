@@ -91,9 +91,9 @@ export function ProductInventoryLinking() {
         api.getInventoryProductLinks({
           status: tab === "linked" ? "linked" : "unlinked",
           search: search.trim() || undefined,
-          reason: tab === "unlinked" && reason !== ALL ? reason : undefined,
+          reason: tab === "unlinked" && reason !== ALL ? (reason as "no_product" | "sku_mismatch") : undefined,
           catalogue: tab === "linked" && catalogue !== ALL ? catalogue : undefined,
-          link_type: tab === "linked" && linkType !== ALL ? linkType : undefined,
+          link_type: tab === "linked" && linkType !== ALL ? (linkType as "auto" | "manual") : undefined,
         }),
       ]);
       setStats(statsResponse.data || emptyStats);

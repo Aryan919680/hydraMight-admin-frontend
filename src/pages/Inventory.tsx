@@ -600,7 +600,7 @@ const saveMainInventory = async () => {
       Add Main Inventory
     </Button>
 
-    <Button onClick={openCreateAllocation}>
+    <Button onClick={() => openCreateAllocation()}>
       <Plus className="mr-2 h-4 w-4" />
       Allocate Stock
     </Button>

@@ -254,8 +254,8 @@ const skuRequestIdRef = useRef(0);
       }
 
       setDuplicate(
-        response.exists
-          ? response.data
+        response.data?.exists
+          ? response.data.data
           : null
       );
     } catch (error) {
@@ -384,7 +384,7 @@ const skuRequestIdRef = useRef(0);
             const response = editing
                 ? await api.updateMainInventory(item!.id, payload)
                 : await api.createMainInventory({ sku: form.sku.trim().toUpperCase(), ...payload });
-            setCreated(response.data);
+            setCreated(response.data?.data ?? null);
             setStep(4);
             await onSaved();
         } catch (error) {
