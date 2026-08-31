@@ -84,6 +84,7 @@ export type CreateProductPayload = {
   name: string;
   sku: string;
   brand?: string;
+
   short_description?: string;
   description?: string;
 
@@ -95,6 +96,9 @@ export type CreateProductPayload = {
   unit?: string;
   weight?: number | null;
 
+  // ADD
+  hsn_code?: string;
+
   mrp?: number | null;
   selling_price?: number | null;
   currency?: string;
@@ -105,7 +109,6 @@ export type CreateProductPayload = {
   service_location_ids: string[];
   images: ProductImagePayload[];
 };
-
 
 
 

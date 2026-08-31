@@ -35,7 +35,7 @@ const App = () => (
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AdminLayout />}>
-              <Route path="/" element={<Products />} />
+              <Route path="/" element={<Orders />} />
               <Route path="/products" element={<Products />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/inventory" element={<Inventory />} />

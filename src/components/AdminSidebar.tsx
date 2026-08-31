@@ -66,7 +66,6 @@ function buildSections(counts: {
   {
     label: "Operations",
     items: [
-      { title: "Dashboard", url: "/", icon: LayoutGrid },
       {
         title: "Orders",
         url: "/orders",
@@ -99,7 +98,7 @@ function buildSections(counts: {
         icon: Tags,
         children: [
           { title: "Manage categories", url: "/categories" },
-          { title: "Sort & visibility", url: "/categories?view=sort" },
+          // { title: "Sort & visibility", url: "/categories?view=sort" },
         ],
       },
     ],
@@ -113,8 +112,8 @@ function buildSections(counts: {
         icon: Boxes,
         children: [
           { title: "Main inventory", url: "/inventory" },
-          { title: "Channel allocation", url: "/inventory?view=channel" },
-          { title: "Bulk upload", url: "/inventory?view=bulk" },
+          // { title: "Channel allocation", url: "/inventory?view=channel" },
+          // { title: "Bulk upload", url: "/inventory?view=bulk" },
         ],
       },
       {
@@ -123,7 +122,7 @@ function buildSections(counts: {
         icon: MapPin,
         children: [
           { title: "Service areas", url: "/locations" },
-          { title: "Add location", url: "/locations?action=add" },
+          // { title: "Add location", url: "/locations?action=add" },
         ],
       },
     ],
