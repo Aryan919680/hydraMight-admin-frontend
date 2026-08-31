@@ -28,7 +28,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -37,7 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+} from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import {
   AdminProduct,
@@ -46,6 +48,8 @@ import {
   CreateProductPayload,
   ServiceLocation,
 } from "@/lib/api";
+import { EcomProductWizard } from "@/components/EcomProductWizard";
+
 
 const blankProductForm = {
   name: "",
@@ -62,12 +66,14 @@ const blankProductForm = {
 
   unit: "bottle",
   weight: "",
+  hsn_code: "",
 
   mrp: "",
   selling_price: "",
   currency: "INR",
 
   service_location_ids: [] as string[],
+
   images: [] as {
     image_url: string;
     storage_bucket?: string;
@@ -82,22 +88,46 @@ const blankProductForm = {
 
   is_featured: false,
   is_available_for_sale: true,
-  image_url_input: "",
 };
 
 export default function Products() {
-  const [products, setProducts] = useState<AdminProduct[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [locations, setLocations] = useState<ServiceLocation[]>([]);
-const [uploadingImage, setUploadingImage] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
-  const [search, setSearch] = useState("");
-  const [productDialogOpen, setProductDialogOpen] = useState(false);
-  const [form, setForm] = useState(blankProductForm);
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [loadingProduct, setLoadingProduct] = useState(false);
+   const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  
+  const [locations, setLocations] =
+  useState<ServiceLocation[]>([]);
+
+const [loading, setLoading] =
+  useState(true);
+
+const [saving, setSaving] =
+  useState(false);
+
+const [uploadingImage, setUploadingImage] =
+  useState(false);
+
+const [search, setSearch] =
+  useState("");
+
+/*
+ * This dialog is now EDIT ONLY.
+ * New products use EcomProductWizard.
+ */
+const [productDialogOpen, setProductDialogOpen] =
+  useState(false);
+
+const [editingProductId, setEditingProductId] =
+  useState<string | null>(null);
+
+const [loadingProduct, setLoadingProduct] =
+  useState(false);
+
+const [form, setForm] =
+  useState(blankProductForm);
+
+const [ecomWizardOpen, setEcomWizardOpen] =
+  useState(false);
 
   const loadData = async () => {
     try {
@@ -151,6 +181,7 @@ const [uploadingImage, setUploadingImage] = useState(false);
       unit: p.unit || "bottle",
       weight:
         p.weight !== undefined && p.weight !== null ? String(p.weight) : "",
+        hsn_code: p.hsn_code || "",
       mrp: p.mrp !== undefined && p.mrp !== null ? String(p.mrp) : "",
       selling_price:
         p.selling_price !== undefined && p.selling_price !== null
@@ -265,33 +296,6 @@ const [uploadingImage, setUploadingImage] = useState(false);
     }));
   };
 
-  const addImageUrl = () => {
-    const imageUrl = form.image_url_input.trim();
-
-    if (!imageUrl) {
-      toast({
-        title: "Image URL required",
-        description: "Please enter an image URL.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      images: [
-        ...prev.images,
-        {
-          image_url: imageUrl,
-          alt_text: prev.name || "Product image",
-          is_primary: prev.images.length === 0,
-          display_order: prev.images.length,
-        },
-      ],
-      image_url_input: "",
-    }));
-  };
-
   const removeImage = (index: number) => {
     setForm((prev) => {
       const nextImages = prev.images.filter((_, i) => i !== index);
@@ -307,114 +311,193 @@ const [uploadingImage, setUploadingImage] = useState(false);
     });
   };
 
-  const submitProduct = async () => {
-    try {
-      if (
-        !form.name ||
-        !form.sku ||
-        !form.category_id ||
-        !form.ecom_channel ||
-        !form.quantity_unit ||
-        form.service_location_ids.length === 0
-      ) {
-        toast({
-          title: "Missing required fields",
-          description:
-            "Name, SKU, category, ecom channel, quantity unit and service locations are required.",
-          variant: "destructive",
-        });
-        return;
-      }
+const submitProduct = async () => {
+  if (!editingProductId) {
+    return;
+  }
 
-      if (
-        form.ecom_channel === "household" &&
-        !["ml", "litre"].includes(form.quantity_unit)
-      ) {
-        toast({
-          title: "Invalid quantity unit",
-          description: "Household products must use ml or litre.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (
-        form.ecom_channel === "commercial" &&
-        form.quantity_unit !== "gallon"
-      ) {
-        toast({
-          title: "Invalid quantity unit",
-          description: "Commercial products must use gallon.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setSaving(true);
-
-      const payload: CreateProductPayload = {
-        category_id: form.category_id,
-        name: form.name,
-        sku: form.sku.trim().toUpperCase(),
-        brand: form.brand || undefined,
-        short_description: form.short_description || undefined,
-        description: form.description || undefined,
-
-        ecom_channel: form.ecom_channel as "household" | "commercial",
-
-        quantity_value: form.quantity_value
-          ? Number(form.quantity_value)
-          : null,
-        quantity_unit: form.quantity_unit as "ml" | "litre" | "gallon",
-
-        unit: form.unit || undefined,
-        weight: form.weight ? Number(form.weight) : null,
-
-        mrp: form.mrp ? Number(form.mrp) : null,
-        selling_price: form.selling_price
-          ? Number(form.selling_price)
-          : null,
-        currency: form.currency || "INR",
-
-        is_featured: Boolean(form.is_featured),
-        is_available_for_sale: Boolean(form.is_available_for_sale),
-
-        service_location_ids: form.service_location_ids,
-        images: form.images,
-      };
-
-      if (editingProductId) {
-        await api.updateProduct(editingProductId, payload as any);
-        toast({
-          title: "Product updated",
-          description: "Ecom product updated successfully.",
-        });
-      } else {
-        await api.createProduct(payload);
-        toast({
-          title: "Product created",
-          description:
-            "Ecom product created. Inventory is linked automatically by SKU if available.",
-        });
-      }
-
-      setForm(blankProductForm);
-      setEditingProductId(null);
-      setProductDialogOpen(false);
-      await loadData();
-    } catch (error) {
+  try {
+    if (
+      !form.name.trim() ||
+      !form.sku.trim() ||
+      !form.category_id ||
+      !form.ecom_channel ||
+      !form.quantity_unit ||
+      form.service_location_ids.length === 0
+    ) {
       toast({
-        title: editingProductId
-          ? "Failed to update product"
-          : "Failed to create product",
+        title: "Missing required fields",
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          "Name, SKU, category, channel, quantity unit and service locations are required.",
         variant: "destructive",
       });
-    } finally {
-      setSaving(false);
+
+      return;
     }
-  };
+
+    if (
+      form.ecom_channel === "household" &&
+      !["ml", "litre"].includes(
+        form.quantity_unit
+      )
+    ) {
+      toast({
+        title: "Invalid quantity unit",
+        description:
+          "Household products must use ml or litre.",
+        variant: "destructive",
+      });
+
+      return;
+    }
+
+    if (
+      form.ecom_channel === "commercial" &&
+      form.quantity_unit !== "gallon"
+    ) {
+      toast({
+        title: "Invalid quantity unit",
+        description:
+          "Commercial products must use gallon.",
+        variant: "destructive",
+      });
+
+      return;
+    }
+
+    const mrp = form.mrp
+      ? Number(form.mrp)
+      : null;
+
+    const sellingPrice =
+      form.selling_price
+        ? Number(form.selling_price)
+        : null;
+
+    if (
+      mrp !== null &&
+      sellingPrice !== null &&
+      sellingPrice > mrp
+    ) {
+      toast({
+        title: "Invalid selling price",
+        description:
+          "Selling price cannot exceed MRP.",
+        variant: "destructive",
+      });
+
+      return;
+    }
+
+    setSaving(true);
+
+    const payload = {
+      category_id:
+        form.category_id,
+
+      name:
+        form.name.trim(),
+
+      brand:
+        form.brand.trim() ||
+        undefined,
+
+      short_description:
+        form.short_description.trim() ||
+        undefined,
+
+      description:
+        form.description.trim() ||
+        undefined,
+
+      ecom_channel:
+        form.ecom_channel as
+          | "household"
+          | "commercial",
+
+      quantity_value:
+        form.quantity_value
+          ? Number(
+              form.quantity_value
+            )
+          : null,
+
+      quantity_unit:
+        form.quantity_unit as
+          | "ml"
+          | "litre"
+          | "gallon",
+
+      unit:
+        form.unit.trim() ||
+        undefined,
+
+      weight:
+        form.weight
+          ? Number(form.weight)
+          : null,
+
+      hsn_code:
+        form.hsn_code.trim() ||
+        undefined,
+
+      mrp,
+
+      selling_price:
+        sellingPrice,
+
+      currency:
+        form.currency ||
+        "INR",
+
+      is_featured:
+        Boolean(
+          form.is_featured
+        ),
+
+      is_available_for_sale:
+        Boolean(
+          form.is_available_for_sale
+        ),
+
+      service_location_ids:
+        form.service_location_ids,
+
+      images:
+        form.images,
+    };
+
+    await api.updateProduct(
+      editingProductId,
+      payload as any
+    );
+
+    toast({
+      title: "Product updated",
+      description:
+        "Ecom product updated successfully.",
+    });
+
+    setProductDialogOpen(false);
+    setEditingProductId(null);
+    setForm({
+      ...blankProductForm,
+    });
+
+    await loadData();
+  } catch (error) {
+    toast({
+      title: "Failed to update product",
+      description:
+        error instanceof Error
+          ? error.message
+          : "Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setSaving(false);
+  }
+};
 
   const toggleActive = async (product: AdminProduct) => {
     try {
@@ -483,47 +566,58 @@ const [uploadingImage, setUploadingImage] = useState(false);
 
   return (
     <div>
-      <PageHeader
-        title="Product CMS"
-        actions={
-          <Dialog
-            open={productDialogOpen}
-            onOpenChange={(open) => {
-              setProductDialogOpen(open);
-              if (!open) {
-                setEditingProductId(null);
-                setForm(blankProductForm);
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button onClick={openCreateDialog}>
-                <Plus className="mr-1 h-4 w-4" />
-                New Ecom Product
-              </Button>
-            </DialogTrigger>
-
-           <ProductDialog
-  form={form}
-  isEditing={Boolean(editingProductId)}
-  loadingProduct={loadingProduct}
-  categories={categories}
-  locations={locations}
-  saving={saving}
-  uploadingImage={uploadingImage}
-  onChange={setField}
-  onToggleLocation={toggleServiceLocation}
-  onUploadImage={uploadProductImage}
-  onRemoveImage={removeImage}
-  onSubmit={submitProduct}
+     <PageHeader
+  title="Product CMS"
+  description="Manage household and commercial Ecom products."
+  actions={
+    <Button
+      onClick={() =>
+        setEcomWizardOpen(true)
+      }
+    >
+      <Plus className="mr-2 h-4 w-4" />
+      New Ecom Product
+    </Button>
+  }
 />
-          </Dialog>
-        }
-      />
 
-      <Tabs defaultValue="ecom">
+<Dialog
+  open={productDialogOpen}
+  onOpenChange={(open) => {
+    setProductDialogOpen(open);
 
-        <TabsContent value="ecom" className="mt-4">
+    if (!open) {
+      setEditingProductId(null);
+
+      setForm({
+        ...blankProductForm,
+      });
+    }
+  }}
+>
+  <ProductDialog
+    form={form}
+    loadingProduct={loadingProduct}
+    categories={categories}
+    locations={locations}
+    saving={saving}
+    uploadingImage={uploadingImage}
+    onChange={setField}
+    onToggleLocation={
+      toggleServiceLocation
+    }
+    onUploadImage={
+      uploadProductImage
+    }
+    onRemoveImage={
+      removeImage
+    }
+    onSubmit={submitProduct}
+  />
+</Dialog>
+      
+     <div className="mt-4">
+        
           <Card>
             <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
               <div>
@@ -671,15 +765,23 @@ const [uploadingImage, setUploadingImage] = useState(false);
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+       </div>
+      
+      <EcomProductWizard
+  open={ecomWizardOpen}
+  onOpenChange={
+    setEcomWizardOpen
+  }
+  onCreated={async () => {
+    await loadData();
+  }}
+/>
     </div>
   );
 }
 
 type ProductDialogProps = {
   form: typeof blankProductForm;
-  isEditing: boolean;
   loadingProduct?: boolean;
   categories: Category[];
   locations: ServiceLocation[];
@@ -700,7 +802,6 @@ type ProductDialogProps = {
 };
 function ProductDialog({
   form,
-  isEditing,
   loadingProduct,
   categories,
   locations,
@@ -719,12 +820,13 @@ function ProductDialog({
     <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
       <DialogHeader>
         <DialogTitle>
-          {isEditing ? "Edit Ecom Product" : "New Ecom Product"}
+  Edit Ecom Product
         </DialogTitle>
         <DialogDescription>
-          Product is for ecommerce selling only. Stock is linked by SKU and
-          service location inventory.
-        </DialogDescription>
+  Update product information, pricing,
+  availability, locations and images.
+  SKU remains linked with main inventory.
+</DialogDescription>
       </DialogHeader>
 
       {loadingProduct ? (
@@ -745,11 +847,13 @@ function ProductDialog({
 
         <div className="space-y-2">
           <Label>SKU *</Label>
-          <Input
-            value={form.sku}
-            onChange={(e) => onChange("sku", e.target.value.toUpperCase())}
-            placeholder="PRO-001"
-          />
+         <Input
+  value={form.sku}
+  disabled
+/>
+<p className="text-xs text-muted-foreground">
+  SKU cannot be changed after product creation.
+</p>
         </div>
 
         <div className="space-y-2">
@@ -846,6 +950,25 @@ function ProductDialog({
             placeholder="0.5"
           />
         </div>
+
+        <div className="space-y-2">
+  <Label>HSN code</Label>
+
+  <Input
+    value={form.hsn_code}
+    onChange={(e) =>
+      onChange(
+        "hsn_code",
+        e.target.value
+      )
+    }
+    placeholder="e.g. 3402"
+  />
+
+  <p className="text-xs text-muted-foreground">
+    Used for GST billing.
+  </p>
+</div>
 
         <div className="space-y-2">
           <Label>MRP ₹</Label>
@@ -1023,32 +1146,11 @@ function ProductDialog({
       <DialogFooter>
         <Button onClick={onSubmit} disabled={saving || loadingProduct}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isEditing ? "Save Changes" : "Publish Ecom Product"}
+          Save Changes
         </Button>
       </DialogFooter>
     </DialogContent>
   );
-}
 
-function EmptyChannelCard({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-
-      <CardContent>
-        <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground">
-          This channel is not active yet.
-        </div>
-      </CardContent>
-    </Card>
-  );
+  
 }
