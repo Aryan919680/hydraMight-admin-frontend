@@ -190,6 +190,54 @@ export default function Dashboard() {
       .slice(0, 6);
   }, [data.orders]);
 
+  const salesActivity = useMemo(() => {
+    const countBy = (statuses: string[]) =>
+      data.orders.filter((o) =>
+        statuses.includes((o.order_status || "").toString().toLowerCase())
+      ).length;
+    const qtyBy = (statuses: string[]) =>
+      data.orders
+        .filter((o) =>
+          statuses.includes((o.order_status || "").toString().toLowerCase())
+        )
+        .reduce((s, o) => s + num(o.total_amount), 0);
+    return [
+      {
+        label: "TO BE PACKED",
+        value: countBy(["placed", "pending", "pending_approval"]),
+        unit: "Pkgs",
+        color: "text-info",
+        icon: Clock,
+        to: "/orders",
+      },
+      {
+        label: "TO BE SHIPPED",
+        value: countBy(["processing", "packed"]),
+        unit: "Pkgs",
+        color: "text-destructive",
+        icon: PackageSearch,
+        to: "/orders",
+      },
+      {
+        label: "TO BE DELIVERED",
+        value: countBy(["dispatched", "shipped", "out_for_delivery"]),
+        unit: "Pkgs",
+        color: "text-success",
+        icon: Truck,
+        to: "/orders",
+      },
+      {
+        label: "TO BE INVOICED",
+        value: qtyBy(["delivered"]),
+        unit: "Value",
+        isMoney: true,
+        color: "text-info",
+        icon: CheckCircle2,
+        to: "/orders",
+      },
+    ];
+  }, [data.orders]);
+
   const recentOrders = useMemo(() => {
     return [...data.orders]
       .sort(
@@ -401,6 +449,29 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Sales Activity */}
+      <div className="mt-6">
+        <h2 className="mb-3 text-base font-semibold">Sales Activity</h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {salesActivity.map((s) => (
+            <Link key={s.label} to={s.to}>
+              <Card className="h-full transition-shadow hover:shadow-md">
+                <CardContent className="flex h-full flex-col items-center justify-center p-6 text-center">
+                  <p className={`text-4xl font-semibold ${s.color}`}>
+                    {s.isMoney ? inr(s.value) : s.value}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{s.unit}</p>
+                  <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground">
+                    <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
+                    {s.label}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Order status bar + sales activity */}
