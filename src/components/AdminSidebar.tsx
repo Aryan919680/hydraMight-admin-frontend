@@ -67,6 +67,11 @@ function buildSections(counts: {
     label: "Operations",
     items: [
       {
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutGrid,
+      },
+      {
         title: "Orders",
         url: "/orders",
         icon: ShoppingCart,
