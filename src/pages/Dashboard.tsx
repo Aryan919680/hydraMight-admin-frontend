@@ -190,6 +190,54 @@ export default function Dashboard() {
       .slice(0, 6);
   }, [data.orders]);
 
+  const salesActivity = useMemo(() => {
+    const countBy = (statuses: string[]) =>
+      data.orders.filter((o) =>
+        statuses.includes((o.order_status || "").toString().toLowerCase())
+      ).length;
+    const qtyBy = (statuses: string[]) =>
+      data.orders
+        .filter((o) =>
+          statuses.includes((o.order_status || "").toString().toLowerCase())
+        )
+        .reduce((s, o) => s + num(o.total_amount), 0);
+    return [
+      {
+        label: "TO BE PACKED",
+        value: countBy(["placed", "pending", "pending_approval"]),
+        unit: "Pkgs",
+        color: "text-info",
+        icon: Clock,
+        to: "/orders",
+      },
+      {
+        label: "TO BE SHIPPED",
+        value: countBy(["processing", "packed"]),
+        unit: "Pkgs",
+        color: "text-destructive",
+        icon: PackageSearch,
+        to: "/orders",
+      },
+      {
+        label: "TO BE DELIVERED",
+        value: countBy(["dispatched", "shipped", "out_for_delivery"]),
+        unit: "Pkgs",
+        color: "text-success",
+        icon: Truck,
+        to: "/orders",
+      },
+      {
+        label: "TO BE INVOICED",
+        value: qtyBy(["delivered"]),
+        unit: "Value",
+        isMoney: true,
+        color: "text-info",
+        icon: CheckCircle2,
+        to: "/orders",
+      },
+    ];
+  }, [data.orders]);
+
   const recentOrders = useMemo(() => {
     return [...data.orders]
       .sort(
